@@ -1,0 +1,69 @@
+{
+  "name": "billwave-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Billing infrastructure for AI SaaS - 3 API calls, zero webhooks",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,svelte}\"",
+    "deploy": "turbo deploy",
+    "land:dev": "pnpm --filter billwave-marketing dev",
+    "docs:dev": "pnpm --filter billwave-docs dev",
+    "docs:api:check": "pnpm --filter billwave-docs generate:api:check",
+    "db:generate": "pnpm --filter @digvijay-x1/db db:generate",
+    "db:migrate:local": "pnpm --filter billwave-api db:migrate:local",
+    "db:migrate:auth": "pnpm --filter billwave-api db:migrate:auth",
+    "db:migrate:test": "pnpm --filter billwave-api db:migrate:test",
+    "db:migrate:live": "pnpm --filter billwave-api db:migrate:live",
+    "db:migrate:remote": "pnpm --filter billwave-api db:migrate:remote",
+    "db:studio": "pnpm --filter @digvijay-x1/db db:studio",
+    "api:dev": "pnpm --filter billwave-api dev",
+    "api:deploy": "pnpm --filter billwave-api deploy",
+    "api:deploy:test": "pnpm --filter billwave-api deploy:test",
+    "api:deploy:live": "pnpm --filter billwave-api deploy:live",
+    "api:logs": "pnpm --filter billwave-api tail",
+    "api:test": "pnpm --filter billwave-api test",
+    "keygen": "tsx scripts/generate-key.ts",
+    "cf:provision": "bash scripts/provision-cloudflare.sh",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo build --filter='@digvijay-x1/billwave' --filter='@digvijay-x1/billwave-cli' --filter='@digvijay-x1/types' && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.2",
+    "@changesets/cli": "^2.30.0",
+    "@sveltejs/kit": "^2.55.0",
+    "@turbo/gen": "^2.8.20",
+    "prettier": "^3.8.1",
+    "prettier-plugin-svelte": "^3.5.1",
+    "tsx": "^4.21.0",
+    "turbo": "^2.8.20",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "pnpm": {
+    "overrides": {
+      "@better-auth/core": "1.6.2",
+      "@better-auth/drizzle-adapter": "1.6.2",
+      "@better-auth/infra": "0.2.1",
+      "@better-auth/kysely-adapter": "1.6.2",
+      "@better-auth/memory-adapter": "1.6.2",
+      "@better-auth/mongo-adapter": "1.6.2",
+      "@better-auth/prisma-adapter": "1.6.2",
+      "@better-auth/sso": "1.6.2",
+      "@better-auth/telemetry": "1.6.2",
+      "@better-auth/utils": "0.4.0",
+      "@better-fetch/fetch": "1.1.21",
+      "better-auth": "1.6.2",
+      "better-call": "1.3.5"
+    }
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  }
+}

@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+.svelte-kit
+.cloudflare
+build
+.turbo
+report.md
+chump-audit-progress.md
+# Environment
+.env
+.env.local
+.env.*.local
+.dev.vars
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+.chump/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage
+.nyc_output
+writeup/
+
+# Wrangler
+.wrangler
+wrangler.toml.local
+plan.md
+task.md
+*.bak
+.windsurf/
+scripts/bench-check.ts
