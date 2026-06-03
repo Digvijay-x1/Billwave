@@ -1,0 +1,592 @@
+import { DurableObject } from "cloudflare:workers";
+import { normalizeResetInterval } from "./reset-interval";
+
+interface UsageState {
+  balance: number;
+  usage: number;
+  limit: number | null;
+  lastReset: number;
+  rolloverBalance: number;
+}
+
+export interface FeatureConfig {
+  limit: number | null;
+  resetInterval: string;
+  resetOnEnable: boolean;
+  rolloverEnabled: boolean;
+  rolloverMaxBalance: number | null;
+  usageModel: string;
+  creditCost: number;
+  initialUsage?: number;
+  usageScopeKey?: string | null;
+}
+
+interface TrackResult {
+  allowed: boolean;
+  balance: number;
+  usage: number;
+  limit: number | null;
+  code: string;
+  rolloverBalance: number;
+}
+
+// Type for serialized storage (plain objects instead of Maps)
+type StoredUsageState = Record<string, UsageState>;
+type StoredFeatureConfigs = Record<string, FeatureConfig>;
+
+function parseUsageScopeKey(
+  raw: string | null | undefined,
+): { subscriptionId?: string; planId?: string; raw?: string } {
+  if (!raw) return {};
+
+  if (raw.startsWith("v2|")) {
+    const parsed: { subscriptionId?: string; planId?: string } = {};
+
+    for (const segment of raw.slice(3).split("|")) {
+      if (segment.startsWith("subscription:")) {
+        parsed.subscriptionId = segment.slice("subscription:".length);
+      } else if (segment.startsWith("plan:")) {
+        parsed.planId = segment.slice("plan:".length);
+      }
+    }
+
+    return parsed;
+  }
+
+  return { raw };
+}
+
+function usageScopesEquivalent(
+  previousKey: string | null | undefined,
+  nextKey: string | null | undefined,
+): boolean {
+  const previous = parseUsageScopeKey(previousKey);
+  const next = parseUsageScopeKey(nextKey);
+
+  if (
+    !previousKey &&
+    !nextKey
+  ) {
+    return true;
+  }
+
+  if (previous.raw && !next.raw) {
+    return (
+      previous.raw === next.subscriptionId ||
+      previous.raw === next.planId ||
+      Boolean(
+        next.subscriptionId &&
+          next.planId &&
+          previous.raw === `${next.subscriptionId}:${next.planId}`,
+      )
+    );
+  }
+
+  if (!previous.raw && next.raw) {
+    return (
+      next.raw === previous.subscriptionId ||
+      next.raw === previous.planId ||
+      Boolean(
+        previous.subscriptionId &&
+          previous.planId &&
+          next.raw === `${previous.subscriptionId}:${previous.planId}`,
+      )
+    );
+  }
+
+  if (previous.raw || next.raw) {
+    return previous.raw === next.raw;
+  }
+
+  return (
+    previous.subscriptionId === next.subscriptionId &&
+    previous.planId === next.planId
+  );
+}
+
+/**
+ * UsageMeterDO - Durable Object for real-time usage tracking
+ *
+ * Each customer gets their own DO instance, identified by customerId.
+ * This ensures atomic operations and no race conditions on concurrent usage.
+ *
+ * NOTE: This DO uses RPC methods (available for compat date >= 2024-04-03).
+ * Public methods can be called directly on the stub without using fetch().
+ */
+export class UsageMeterDO extends DurableObject<Record<string, unknown>> {
+  private featureUsage: Map<string, UsageState> = new Map();
+  private featureConfigs: Map<string, FeatureConfig> = new Map();
+  private initialized = false;
+
+  /**
+   * Initialize the DO from storage
+   * Uses plain objects for storage serialization compatibility
+   */
+  private async init(): Promise<void> {
+    if (this.initialized) return;
+
+    // Load usage state (stored as plain object, not Map)
+    const stored = await this.ctx.storage.get<StoredUsageState>("featureUsage");
+    if (stored) {
+      this.featureUsage = new Map(Object.entries(stored));
+    }
+
+    // Load feature configs
+    const configs =
+      await this.ctx.storage.get<StoredFeatureConfigs>("featureConfigs");
+    if (configs) {
+      this.featureConfigs = new Map(Object.entries(configs));
+    }
+
+    this.initialized = true;
+  }
+
+  /**
+   * Configure a feature for this customer (called when subscription starts)
+   * This is an RPC method - call directly on the stub
+   */
+  async configureFeature(
+    featureId: string,
+    config: FeatureConfig,
+    options?: { lazy?: boolean },
+  ): Promise<{ success: boolean }> {
+    await this.init();
+    const normalizedConfig: FeatureConfig = {
+      ...config,
+      resetInterval: normalizeResetInterval(config.resetInterval),
+    };
+
+    // If lazy initialization, prevent reset/overwrite of existing state
+    const existingState = this.featureUsage.get(featureId);
+    if (options?.lazy) {
+      if (!existingState) {
+        // No state yet — save config but DON'T create state.
+        // Caller should handle "feature_not_found" and provide initialUsage via non-lazy configure.
+        this.featureConfigs.set(featureId, normalizedConfig);
+        await this.persist();
+        return { success: true };
+      }
+
+      const oldConfig = this.featureConfigs.get(featureId);
+      const normalizedOldInterval = normalizeResetInterval(
+        oldConfig?.resetInterval,
+      );
+
+      // If config hasn't changed, skip entirely (no persist, no write)
+      const configChanged =
+        normalizedOldInterval !== normalizedConfig.resetInterval ||
+        oldConfig?.limit !== normalizedConfig.limit ||
+        oldConfig?.rolloverEnabled !== normalizedConfig.rolloverEnabled ||
+        oldConfig?.rolloverMaxBalance !== normalizedConfig.rolloverMaxBalance ||
+        oldConfig?.usageModel !== normalizedConfig.usageModel ||
+        oldConfig?.creditCost !== normalizedConfig.creditCost ||
+        oldConfig?.usageScopeKey !== normalizedConfig.usageScopeKey;
+
+      if (!configChanged) {
+        return { success: true };
+      }
+
+      console.log(
+        `[UsageMeter] Config changed for ${featureId}: interval ${normalizedOldInterval} -> ${normalizedConfig.resetInterval}, limit ${oldConfig?.limit} -> ${normalizedConfig.limit}`,
+      );
+      this.featureConfigs.set(featureId, normalizedConfig);
+      const scopeChanged = !usageScopesEquivalent(
+        oldConfig?.usageScopeKey,
+        normalizedConfig.usageScopeKey,
+      );
+
+      if (scopeChanged && normalizedConfig.resetOnEnable) {
+        existingState.limit = normalizedConfig.limit;
+        existingState.usage = 0;
+        existingState.balance = normalizedConfig.limit ?? Infinity;
+        existingState.rolloverBalance = 0;
+        existingState.lastReset = Date.now();
+      } else {
+        existingState.limit = normalizedConfig.limit;
+        if (normalizedConfig.limit !== null) {
+          existingState.balance = Math.max(
+            0,
+            normalizedConfig.limit - existingState.usage,
+          );
+        } else {
+          existingState.balance = Infinity;
+        }
+
+        if (normalizedOldInterval !== normalizedConfig.resetInterval) {
+          // Preserve consumed usage when only the reset policy changes within
+          // the same plan/subscription scope.
+          existingState.lastReset = Date.now();
+        }
+      }
+      await this.persist();
+      await this.scheduleResetAlarm();
+      await this.maybeReset(featureId);
+
+      return { success: true };
+    }
+
+    this.featureConfigs.set(featureId, normalizedConfig);
+
+    // Determine start usage: existing, or initialUsage from config, or 0
+    let startUsage = 0;
+    if (normalizedConfig.initialUsage !== undefined) {
+      startUsage = normalizedConfig.initialUsage;
+    }
+
+    if (!existingState || normalizedConfig.resetOnEnable) {
+      this.featureUsage.set(featureId, {
+        balance: normalizedConfig.limit ?? Infinity,
+        usage: startUsage, // Start with migrated usage
+        limit: normalizedConfig.limit,
+        lastReset: Date.now(),
+        rolloverBalance: 0,
+      });
+
+      // If we have initial usage, debit the balance
+      if (startUsage > 0 && normalizedConfig.limit !== null) {
+        const state = this.featureUsage.get(featureId)!;
+        state.balance = Math.max(0, state.balance - startUsage);
+      }
+    }
+
+    await this.persist();
+
+    // Schedule reset alarm if needed
+    if (normalizedConfig.resetInterval !== "none") {
+      await this.scheduleResetAlarm();
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * Check if the period has elapsed and reset inline if needed.
+   * Catches cases where the alarm was missed or interval was too short.
+   */
+  private async maybeReset(featureId: string): Promise<void> {
+    const state = this.featureUsage.get(featureId);
+    const config = this.featureConfigs.get(featureId);
+    const normalizedInterval = normalizeResetInterval(config?.resetInterval);
+    if (!state || !config || normalizedInterval === "none") return;
+
+    const intervalMs = this.getIntervalMs(normalizedInterval);
+    if (intervalMs === 0) return;
+
+    const nextReset = state.lastReset + intervalMs;
+    if (Date.now() >= nextReset) {
+      await this.resetFeature(featureId);
+      await this.scheduleResetAlarm();
+    }
+  }
+
+  /**
+   * Check if usage is allowed (without consuming)
+   * This is an RPC method - call directly on the stub
+   */
+  async check(
+    featureId: string,
+    requiredBalance: number = 1,
+    currentConfig?: FeatureConfig,
+  ): Promise<TrackResult> {
+    await this.init();
+
+    // Inline config sync (avoids separate RPC call)
+    if (currentConfig) {
+      await this.configureFeature(featureId, currentConfig, { lazy: true });
+    }
+
+    const state = this.featureUsage.get(featureId);
+    const config = this.featureConfigs.get(featureId);
+
+    if (!state || !config) {
+      return {
+        allowed: false,
+        balance: 0,
+        usage: 0,
+        limit: null,
+        code: "feature_not_found",
+        rolloverBalance: 0,
+      };
+    }
+
+    // Auto-reset if period has elapsed
+    await this.maybeReset(featureId);
+
+    // For unlimited features
+    if (state.limit === null) {
+      return {
+        allowed: true,
+        balance: Infinity,
+        usage: state.usage,
+        limit: null,
+        code: "unlimited",
+        rolloverBalance: state.rolloverBalance,
+      };
+    }
+
+    // Apply credit cost multiplier (same as track) so check and track are consistent
+    const creditMultiplier = config.creditCost > 0 ? config.creditCost : 1;
+    const actualRequired = requiredBalance * creditMultiplier;
+
+    const effectiveBalance = state.balance + state.rolloverBalance;
+    const allowed = effectiveBalance >= actualRequired;
+
+    return {
+      allowed,
+      balance: effectiveBalance,
+      usage: state.usage,
+      limit: state.limit,
+      code: allowed ? "allowed" : "insufficient_balance",
+      rolloverBalance: state.rolloverBalance,
+    };
+  }
+
+  /**
+   * Track usage (consume credits/units)
+   * This is an RPC method - call directly on the stub
+   */
+  async track(
+    featureId: string,
+    delta: number = 1,
+    currentConfig?: FeatureConfig,
+  ): Promise<TrackResult> {
+    await this.init();
+
+    // Inline config sync (avoids separate RPC call)
+    if (currentConfig) {
+      await this.configureFeature(featureId, currentConfig, { lazy: true });
+    }
+
+    const state = this.featureUsage.get(featureId);
+    const config = this.featureConfigs.get(featureId);
+
+    if (!state || !config) {
+      return {
+        allowed: false,
+        balance: 0,
+        usage: 0,
+        limit: null,
+        code: "feature_not_found",
+        rolloverBalance: 0,
+      };
+    }
+
+    // Auto-reset if period has elapsed
+    await this.maybeReset(featureId);
+
+    // Apply credit cost multiplier if applicable (0 means 1:1)
+    const creditMultiplier = config.creditCost > 0 ? config.creditCost : 1;
+    const actualDelta = delta * creditMultiplier;
+
+    // For unlimited features
+    if (state.limit === null) {
+      state.usage += actualDelta;
+      await this.persist();
+      return {
+        allowed: true,
+        balance: Infinity,
+        usage: state.usage,
+        limit: null,
+        code: "tracked",
+        rolloverBalance: state.rolloverBalance,
+      };
+    }
+
+    // Check if we have enough balance (including rollover)
+    const effectiveBalance = state.balance + state.rolloverBalance;
+
+    if (effectiveBalance < actualDelta) {
+      return {
+        allowed: false,
+        balance: effectiveBalance,
+        usage: state.usage,
+        limit: state.limit,
+        code: "insufficient_balance",
+        rolloverBalance: state.rolloverBalance,
+      };
+    }
+
+    // Consume from rollover first, then regular balance
+    if (state.rolloverBalance >= actualDelta) {
+      state.rolloverBalance -= actualDelta;
+    } else {
+      const remainder = actualDelta - state.rolloverBalance;
+      state.rolloverBalance = 0;
+      state.balance -= remainder;
+    }
+
+    state.usage += actualDelta;
+    await this.persist();
+
+    return {
+      allowed: true,
+      balance: state.balance + state.rolloverBalance,
+      usage: state.usage,
+      limit: state.limit,
+      code: "tracked",
+      rolloverBalance: state.rolloverBalance,
+    };
+  }
+
+  /**
+   * Get current balances for all features
+   * This is an RPC method - call directly on the stub
+   */
+  async getBalances(): Promise<Record<string, UsageState>> {
+    await this.init();
+    return Object.fromEntries(this.featureUsage);
+  }
+
+  /**
+   * Reset usage for a specific feature (used by alarms)
+   * This is an RPC method - call directly on the stub
+   */
+  async resetFeature(featureId: string): Promise<{ success: boolean }> {
+    await this.init();
+
+    const state = this.featureUsage.get(featureId);
+    const config = this.featureConfigs.get(featureId);
+
+    if (!state || !config) {
+      console.log(
+        `[UsageMeter] resetFeature(${featureId}): no state or config found`,
+      );
+      return { success: false };
+    }
+
+    console.log(
+      `[UsageMeter] resetFeature(${featureId}): usage ${state.usage} -> 0, balance -> ${config.limit ?? "Infinity"}`,
+    );
+
+    // Handle rollovers
+    if (config.rolloverEnabled) {
+      const remainingBalance = state.balance;
+      let newRollover = state.rolloverBalance + remainingBalance;
+
+      // Apply rollover cap if set
+      if (config.rolloverMaxBalance !== null) {
+        newRollover = Math.min(newRollover, config.rolloverMaxBalance);
+      }
+
+      state.rolloverBalance = newRollover;
+    } else {
+      state.rolloverBalance = 0;
+    }
+
+    // Reset to full limit
+    state.balance = config.limit ?? Infinity;
+    state.usage = 0;
+    state.lastReset = Date.now();
+
+    await this.persist();
+
+    return { success: true };
+  }
+
+  /**
+   * Schedule an alarm for the next usage reset
+   * DOs only support one alarm at a time, so we schedule for the soonest reset needed
+   */
+  private async scheduleResetAlarm(): Promise<void> {
+    // Find the soonest reset time across all features
+    let soonestReset = Infinity;
+
+    for (const [featureId, config] of this.featureConfigs) {
+      const normalizedInterval = normalizeResetInterval(config.resetInterval);
+      if (normalizedInterval === "none") continue;
+      const intervalMs = this.getIntervalMs(normalizedInterval);
+      if (intervalMs === 0) continue;
+
+      const state = this.featureUsage.get(featureId);
+      if (!state) continue;
+
+      const nextReset = state.lastReset + intervalMs;
+      if (nextReset < soonestReset) {
+        soonestReset = nextReset;
+      }
+    }
+
+    if (soonestReset === Infinity) return;
+
+    // If the reset time is in the past, schedule immediately so the alarm
+    // fires ASAP instead of silently dropping it (fixes missed alarm chain)
+    const alarmTime =
+      soonestReset > Date.now() ? soonestReset : Date.now() + 1000;
+
+    const currentAlarm = await this.ctx.storage.getAlarm();
+
+    // Always align the DO alarm to the current soonest reset. This replaces
+    // stale alarms left behind by older reset intervals or removed features.
+    if (currentAlarm !== alarmTime) {
+      await this.ctx.storage.setAlarm(alarmTime);
+    }
+  }
+
+  /**
+   * Alarm handler - resets usage based on interval
+   * Called by Cloudflare when the scheduled alarm fires
+   */
+  async alarm(): Promise<void> {
+    await this.init();
+
+    const now = Date.now();
+
+    // Check all features for reset
+    for (const [featureId, state] of this.featureUsage) {
+      const config = this.featureConfigs.get(featureId);
+      const normalizedInterval = normalizeResetInterval(config?.resetInterval);
+      if (config && normalizedInterval !== "none") {
+        const intervalMs = this.getIntervalMs(normalizedInterval);
+        const nextReset = state.lastReset + intervalMs;
+
+        if (now >= nextReset) {
+          await this.resetFeature(featureId);
+        }
+      }
+    }
+
+    // Re-schedule for the next soonest reset across all features
+    await this.scheduleResetAlarm();
+  }
+
+  /**
+   * Convert interval string to milliseconds
+   */
+  private getIntervalMs(interval: string): number {
+    const normalizedInterval = normalizeResetInterval(interval);
+    const intervals: Record<string, number> = {
+      "5min": 5 * 60 * 1000,
+      "15min": 15 * 60 * 1000,
+      "30min": 30 * 60 * 1000,
+      hour: 60 * 60 * 1000,
+      hourly: 60 * 60 * 1000,
+      day: 24 * 60 * 60 * 1000,
+      daily: 24 * 60 * 60 * 1000,
+      week: 7 * 24 * 60 * 60 * 1000,
+      weekly: 7 * 24 * 60 * 60 * 1000,
+      month: 30 * 24 * 60 * 60 * 1000,
+      monthly: 30 * 24 * 60 * 60 * 1000,
+      quarter: 90 * 24 * 60 * 60 * 1000,
+      quarterly: 90 * 24 * 60 * 60 * 1000,
+      semi_annual: 180 * 24 * 60 * 60 * 1000,
+      year: 365 * 24 * 60 * 60 * 1000,
+      yearly: 365 * 24 * 60 * 60 * 1000,
+    };
+    return intervals[normalizedInterval] || 0;
+  }
+
+  /**
+   * Persist state to storage
+   * Converts Maps to plain objects for serialization
+   */
+  private async persist(): Promise<void> {
+    await this.ctx.storage.put(
+      "featureUsage",
+      Object.fromEntries(this.featureUsage),
+    );
+    await this.ctx.storage.put(
+      "featureConfigs",
+      Object.fromEntries(this.featureConfigs),
+    );
+  }
+}
