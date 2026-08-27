@@ -1,0 +1,112 @@
+---
+title: Pricing models
+description: Overview of entitlement models, rating models, overage, entities, and credits
+icon: Blend
+---
+
+# Pricing models
+
+Billwave pricing has three building blocks:
+
+- **Entitlement model**: when usage becomes billable
+- **Rating model**: how billable usage becomes money
+- **Resource shape**: whether the feature is consumable usage or persistent capacity
+
+That separation is why Billwave can support free quotas, pay-as-you-go APIs,
+tiered overage, credits, and seat-based products without a separate billing
+system for each one.
+
+## Start here
+
+- If you want monthly included quota before charging, read
+  [Included vs usage-based](/pricing/included-vs-usage-based)
+- If you want simple package pricing like "₦500 per 1,000 events", read
+  [Package pricing](/pricing/package-pricing)
+- If you want staircase tiers where each band prices only its own units, read
+  [Graduated pricing](/pricing/graduated-pricing)
+- If you want one reached band to reprice all billable usage, read
+  [Volume pricing](/pricing/volume-pricing)
+- If you want limits that block or charge after the included amount, read
+  [Overage](/pricing/overage)
+- If you want seats, workspaces, or projects, read
+  [Entities & seat-based pricing](/pricing/seat-pricing)
+- If you want prepaid balances, read [Credits](/pricing/credits)
+- If you want plans managed from code, read
+  [Define plans in code](/pricing/programmatic-plans)
+
+## The model
+
+### 1. Entitlement model
+
+This decides what happens before billing kicks in.
+
+- `included`
+  - Customer gets a quota first
+  - Example: `50,000` emails per month included
+- `usage_based`
+  - Billing starts from the first tracked unit
+  - Example: every API call is billable immediately
+- `prepaid`
+  - Usage consumes credits from a stored balance
+  - Example: AI runs consume credits bought in advance
+
+### 2. Rating model
+
+This decides how billable units are priced.
+
+- `package`
+  - Fixed amount per `billingUnits`
+  - Example: `₦5` per `1,000` API calls
+- `graduated`
+  - Each tier prices only the units inside that tier
+- `volume`
+  - The reached tier prices all billable usage
+
+### 3. Resource shape
+
+This decides what the feature represents.
+
+- **Consumable metered features**
+  - Usage is tracked with `track()`
+  - Examples: API calls, tokens, emails, GB processed
+- **Non-consumable entity features**
+  - Capacity is managed with `addEntity()` and `removeEntity()`
+  - Examples: seats, workspaces, projects
+
+## Common combinations
+
+- `included + package`
+  - Monthly quota with simple overage
+- `included + graduated`
+  - Included usage, then staircase overage
+- `included + volume`
+  - Included usage, then band-based overage
+- `usage_based + package`
+  - Pure pay-as-you-go
+- `usage_based + graduated`
+  - Tiered pay-as-you-go
+- `usage_based + volume`
+  - Repriced pay-as-you-go bands
+- `entity + included`
+  - Seat caps or workspace caps
+- `prepaid + metered`
+  - Credits or stored-value billing
+
+## Important rules
+
+- Tiered pricing works on **billable quantity**, not always total usage.
+- For `included`, billable quantity is `max(0, usage - included)`.
+- For `usage_based`, billable quantity is all tracked usage.
+- `usage_based` is effectively always chargeable usage, so overage settings do
+  not control it.
+- Entity removal is **deferred**. A removed seat becomes `pending_removal` and
+  still counts until the end of the current billing period.
+
+## What to read next
+
+- [Included vs usage-based](/pricing/included-vs-usage-based)
+- [Package pricing](/pricing/package-pricing)
+- [Graduated pricing](/pricing/graduated-pricing)
+- [Volume pricing](/pricing/volume-pricing)
+- [Overage](/pricing/overage)
+- [Entities & seat-based pricing](/pricing/seat-pricing)
