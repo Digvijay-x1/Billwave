@@ -1,0 +1,134 @@
+---
+title: plans()
+description: List and retrieve plans for your organization
+icon: LayoutList
+---
+
+# plans()
+
+Query your organization's plans programmatically. Useful for building pricing pages, plan selection UIs, and dynamic upgrade flows.
+
+## `billwave.plans(params?)`
+
+List all active plans for the organization. Supports filtering by group, interval, and currency.
+
+```ts
+const { plans } = await billwave.plans();
+
+for (const plan of plans) {
+  console.log(plan.name, plan.price, plan.currency);
+}
+```
+
+### Parameters
+
+| Parameter                | Type           | Required | Description                                   |
+| ------------------------ | -------------- | -------- | --------------------------------------------- |
+| `params.group`           | `string`       | No       | Filter by plan group (e.g. `"support"`)       |
+| `params.interval`        | `PlanInterval` | No       | Filter by billing interval (e.g. `"monthly"`) |
+| `params.currency`        | `string`       | No       | Filter by currency code (e.g. `"USD"`)        |
+| `params.includeInactive` | `boolean`      | No       | Include inactive plans (default: `false`)     |
+
+### Returns `Promise<PlansResult>`
+
+```ts
+interface PlansResult {
+  success: boolean;
+  plans: PublicPlan[];
+}
+```
+
+### Filtering examples
+
+```ts
+// Only monthly plans
+const { plans: monthly } = await billwave.plans({ interval: "monthly" });
+
+// Only plans in the "support" group
+const { plans: support } = await billwave.plans({ group: "support" });
+
+// Only USD plans
+const { plans: usd } = await billwave.plans({ currency: "USD" });
+
+// Combine filters
+const { plans: filtered } = await billwave.plans({
+  group: "support",
+  interval: "monthly",
+  currency: "USD",
+});
+```
+
+---
+
+## `billwave.plans.get(slug)`
+
+Retrieve a single plan by its slug.
+
+```ts
+const plan = await billwave.plans.get("pro-monthly");
+
+console.log(plan.name); // "Pro"
+console.log(plan.price); // 500000
+console.log(plan.features); // [{ slug: "api-calls", limit: 50000, ... }]
+```
+
+### Parameters
+
+| Parameter | Type     | Required | Description   |
+| --------- | -------- | -------- | ------------- |
+| `slug`    | `string` | Yes      | The plan slug |
+
+### Returns `Promise<PublicPlan>`
+
+---
+
+## Response types
+
+### `PublicPlan`
+
+```ts
+interface PublicPlan {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  price: number; // Minor currency units (e.g. kobo, cents)
+  currency: string;
+  interval: PlanInterval; // "monthly" | "yearly" | "weekly" | "quarterly"
+  type: string; // "free" | "paid"
+  billingType: string; // "recurring" | "one_time"
+  isAddon: boolean;
+  planGroup: string | null;
+  trialDays: number;
+  features: PublicPlanFeature[];
+}
+```
+
+### `PublicPlanFeature`
+
+```ts
+interface PublicPlanFeature {
+  slug: string;
+  name: string;
+  type: "metered" | "boolean" | "static";
+  enabled: boolean;
+  limit: number | null; // null = unlimited
+  trialLimit?: number | null; // limit during trial period
+  resetInterval: string | null;
+  unit: string | null; // "call", "message", "GB", etc.
+  usageModel?: "included" | "usage_based" | "prepaid";
+  pricePerUnit?: number | null;
+  billingUnits?: number | null;
+  ratingModel?: "package" | "graduated" | "volume";
+  tiers?: Array<{
+    upTo: number | null;
+    unitPrice: number;
+    flatFee?: number;
+  }> | null;
+  overage?: "block" | "charge";
+  overagePrice?: number | null;
+}
+```
+
+`usageModel`, `ratingModel`, and `tiers` let you render richer pricing pages
+from your live catalog without hardcoding volumetric pricing rules in the app.

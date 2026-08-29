@@ -1,0 +1,93 @@
+---
+title: attach()
+description: Subscribe a customer to a plan
+icon: Link
+---
+
+# attach()
+
+Subscribe a customer to a subscription plan. If payment is required, Billwave returns a provider checkout URL.
+
+## Signature
+
+```ts
+await billwave.attach({
+  customer: string,    // Your internal user ID
+  product: string,     // Plan slug or ID
+  customerData?: {     // Optional: auto-create customer
+    email: string,
+    name?: string,
+    metadata?: Record<string, unknown>,
+  },
+  metadata?: object,   // Optional metadata to attach
+  callbackUrl?: string,
+}): Promise<AttachResult>
+```
+
+## Parameters
+
+| Parameter      | Type     | Required | Description                               |
+| -------------- | -------- | -------- | ----------------------------------------- |
+| `customer`     | `string` | ✅       | Your internal user ID                     |
+| `product`      | `string` | ✅       | Plan slug or ID                           |
+| `customerData` | `object` | -        | Auto-create customer payload              |
+| `metadata`     | `object` | -        | Custom data to attach to the subscription |
+| `callbackUrl`  | `string` | -        | Redirect URL after payment                |
+
+## Response
+
+```ts
+interface AttachResult {
+  success: boolean;
+  type: "new" | "upgrade" | "downgrade" | "lateral";
+  requiresCheckout: boolean;
+  checkoutUrl?: string;
+  subscriptionId?: string;
+  message: string;
+}
+```
+
+## Examples
+
+### Basic Usage
+
+```ts
+import { Billwave } from "@digvijay-x1/billwave";
+
+const billwave = new Billwave({ secretKey: process.env.BILLWAVE_API_KEY });
+
+// Subscribe a customer to the "pro" plan
+const result = await billwave.attach({
+  customer: "user_123",
+  product: "pro-monthly",
+  customerData: { email: "user@example.com" },
+});
+
+if (result.checkoutUrl) {
+  // Redirect customer to complete payment
+  console.log(result.checkoutUrl);
+} else if (!result.requiresCheckout) {
+  // Already subscribed
+  console.log("Subscription active!");
+}
+```
+
+### With Metadata
+
+```ts
+const result = await billwave.attach({
+  customer: "user_123",
+  product: "enterprise",
+  metadata: {
+    companyName: "Acme Corp",
+    seats: 10,
+    referralCode: "FRIEND20",
+  },
+});
+```
+
+## Notes
+
+- If the customer already has an active subscription to this plan, no new checkout is created
+- Plan changes (upgrades/downgrades) are handled automatically
+- The provider handles the payment UI - you just redirect the customer

@@ -1,0 +1,191 @@
+---
+title: billing
+description: Unbilled usage, invoices, and invoice generation
+icon: Receipt
+---
+
+# billing
+
+The `billwave.billing` namespace provides access to unbilled overage usage, invoice generation, and invoice history.
+
+---
+
+## `billwave.billing.usage(params)`
+
+Get a breakdown of all billable usage that has not yet been invoiced. This now
+includes simple package pricing, graduated tiers, and volume pricing.
+
+```ts
+const usage = await billwave.billing.usage({ customer: "user_123" });
+
+console.log("Currency:", usage.currency);
+console.log("Total estimated:", usage.totalEstimated);
+
+for (const feature of usage.features) {
+  console.log(
+    feature.featureName,
+    feature.billableQuantity,
+    feature.ratingModel,
+  );
+}
+```
+
+### Parameters
+
+| Parameter  | Type     | Required | Description      |
+| ---------- | -------- | -------- | ---------------- |
+| `customer` | `string` | Yes      | User ID or email |
+
+### Returns `Promise<BillingUsageResult>`
+
+```ts
+interface BillingUsageResult {
+  customer: string;
+  currency: string;
+  totalEstimated: number;
+  features: BillingFeatureUsage[];
+}
+
+interface BillingFeatureUsage {
+  featureId: string;
+  featureName: string;
+  usage: number;
+  included: number | null;
+  billableQuantity: number;
+  estimatedAmount: number;
+  usageModel: string;
+  ratingModel?: "package" | "graduated" | "volume";
+  pricePerUnit?: number | null;
+  billingUnits?: number | null;
+  tierBreakdown?: Array<{
+    tier: number;
+    units: number;
+    unitPrice: number;
+    flatFee?: number;
+    amount: number;
+  }>;
+}
+```
+
+When `ratingModel` is `graduated` or `volume`, `tierBreakdown` shows exactly
+how the estimate was calculated.
+
+### How tiered pricing works
+
+`graduated` and `volume` both use tiers, but they do not calculate the same way.
+
+- `graduated`: each tier prices only the usage inside that tier
+- `volume`: the reached tier prices all billable usage
+
+Example with `31` billable units and these unit-price tiers:
+
+```ts
+const tiers = [
+  { upTo: 30, unitPrice: 100 },
+  { upTo: 100, unitPrice: 50 },
+];
+```
+
+- `graduated` = `30 * 100 + 1 * 50 = 3050`
+- `volume` = `31 * 50 = 1550`
+
+Flat-priced tiers follow the same rule:
+
+- in `graduated`, each entered tier can add its `flatFee` once
+- in `volume`, only the reached tier's `flatFee` applies
+
+Example:
+
+```ts
+const tiers = [
+  { upTo: 30, flatFee: 1000 },
+  { upTo: 100, flatFee: 5000 },
+];
+```
+
+For `31` billable units:
+
+- `graduated` = `1000 + 5000 = 6000`
+- `volume` = `5000`
+
+This is why `tierBreakdown` is useful: it shows whether the amount came from
+stacked tier accumulation or a single reached band.
+
+---
+
+## `billwave.billing.invoice(params)`
+
+Generate an invoice for a customer's unbilled overage usage. Fails if there is no unbilled usage to invoice.
+
+```ts
+const result = await billwave.billing.invoice({ customer: "user_123" });
+
+console.log("Invoice:", result.invoice.number);
+console.log("Total:", result.invoice.total);
+console.log("Status:", result.invoice.status);
+```
+
+### Parameters
+
+| Parameter  | Type     | Required | Description      |
+| ---------- | -------- | -------- | ---------------- |
+| `customer` | `string` | Yes      | User ID or email |
+
+### Returns `Promise<InvoiceResult>`
+
+```ts
+interface InvoiceResult {
+  success: boolean;
+  invoice: Invoice;
+}
+
+interface Invoice {
+  id: string;
+  number: string;
+  customerId: string;
+  status: "draft" | "open" | "paid" | "void";
+  currency: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  lineItems: InvoiceLineItem[];
+  createdAt: number;
+  paidAt?: number;
+}
+
+interface InvoiceLineItem {
+  featureSlug: string;
+  featureName: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+}
+```
+
+---
+
+## `billwave.billing.invoices(params)`
+
+List all invoices for a customer.
+
+```ts
+const result = await billwave.billing.invoices({ customer: "user_123" });
+
+for (const inv of result.invoices) {
+  console.log(inv.number, inv.status, inv.total);
+}
+```
+
+### Parameters
+
+| Parameter  | Type     | Required | Description      |
+| ---------- | -------- | -------- | ---------------- |
+| `customer` | `string` | Yes      | User ID or email |
+
+### Returns `Promise<InvoicesResult>`
+
+```ts
+interface InvoicesResult {
+  invoices: Invoice[];
+}
+```

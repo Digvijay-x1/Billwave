@@ -1,0 +1,631 @@
+---
+title: Create plans & features
+description: "Reference: metered(), boolean(), entity(), creditSystem(), creditPack(), plan() — define features and plans as code"
+icon: Blocks
+---
+
+# Create plans & features
+
+Builder functions for defining features and plans declaratively. Features become handles you can use directly for `.check()` and `.track()`.
+
+## `metered(slug, opts?)`
+
+Create a metered feature handle. Metered features have numeric limits that reset on a schedule.
+
+```ts
+import { metered } from "@digvijay-x1/billwave";
+
+const apiCalls = metered("api-calls", { name: "API Calls" });
+```
+
+### Parameters
+
+| Parameter   | Type     | Required | Description                                               |
+| ----------- | -------- | -------- | --------------------------------------------------------- |
+| `slug`      | `string` | Yes      | Unique feature identifier                                 |
+| `opts.name` | `string` | No       | Human-readable name (auto-generated from slug if omitted) |
+
+### Methods
+
+#### `.limit(value, config?)`
+
+Create a plan feature entry with a specific limit.
+
+```ts
+apiCalls.limit(1000);
+apiCalls.limit(50000, { reset: "daily" });
+apiCalls.limit(50000, {
+  overage: "charge",
+  overagePrice: 100,
+  maxOverageUnits: 100000,
+});
+```
+
+| Parameter                | Type                                       | Default      | Description                                      |
+| ------------------------ | ------------------------------------------ | ------------ | ------------------------------------------------ |
+| `value`                  | `number`                                   | —            | Usage limit per period                           |
+| `config.reset`           | `ResetInterval`                            | `"monthly"`  | Reset schedule                                   |
+| `config.usageModel`      | `"included" \| "usage_based" \| "prepaid"` | `"included"` | Entitlement model for the feature                |
+| `config.pricePerUnit`    | `number`                                   | —            | Package or per-unit price (minor currency)       |
+| `config.ratingModel`     | `"package" \| "graduated" \| "volume"`     | `"package"`  | How billable usage is priced                     |
+| `config.tiers`           | `PricingTier[]`                            | —            | Tier definitions for graduated or volume pricing |
+| `config.overage`         | `"block" \| "charge"`                      | `"block"`    | What happens when limit is exceeded              |
+| `config.overagePrice`    | `number`                                   | —            | Price per overage unit (minor currency)          |
+| `config.maxOverageUnits` | `number`                                   | —            | Hard cap on overage units per period             |
+| `config.billingUnits`    | `number`                                   | `1`          | Package size for billing                         |
+| `config.creditCost`      | `number`                                   | —            | Cost in credits per unit                         |
+
+#### `.trialLimit(value)`
+
+Set a different usage limit for the trial period. When a customer is in a trial, this limit applies instead of the regular limit.
+
+```ts
+apiCalls.limit(10000).trialLimit(1000);
+```
+
+| Parameter | Type     | Required | Description                          |
+| --------- | -------- | -------- | ------------------------------------ |
+| `value`   | `number` | Yes      | Trial usage limit (null = unlimited) |
+
+**Example:** Give customers 1,000 API calls during their 14-day trial, then 10,000 calls per month once they convert:
+
+```ts
+plan("pro", {
+  name: "Pro",
+  price: 2000,
+  currency: "USD",
+  interval: "monthly",
+  trialDays: 14,
+  features: [apiCalls.limit(10000).trialLimit(1000)],
+});
+```
+
+If you don't set a trial limit, the regular limit applies during both trial and active periods.
+
+#### `.unlimited()`
+
+Create a plan feature entry with no limit.
+
+```ts
+apiCalls.unlimited();
+```
+
+#### `.perUnit(unitPrice, config?)`
+
+Create a usage-based feature that bills from the first tracked unit.
+
+```ts
+apiCalls.perUnit(2); // $0.02 per unit
+apiCalls.perUnit(500, { reset: "monthly" }); // $5.00 per unit
+```
+
+`perUnit()` is a convenience wrapper for `usageModel: "usage_based"` with
+`ratingModel: "package"` and `billingUnits: 1`.
+
+#### `.graduated(tiers, config?)`
+
+Create stacked tier pricing where each tier rates only the units inside that
+tier.
+
+```ts
+apiCalls.graduated([
+  { upTo: 1000, unitPrice: 0 },
+  { upTo: 10000, unitPrice: 10 },
+  { upTo: null, unitPrice: 5 },
+]);
+```
+
+For 1,500 units, the first 1,000 units use tier 1 and the next 500 units use
+tier 2.
+
+If a tier includes `flatFee`, that fee is added once when usage enters that
+tier. Graduated pricing is cumulative across tiers used.
+
+Example with billable usage of `31`:
+
+```ts
+apiCalls.graduated([
+  { upTo: 30, flatFee: 1000 },
+  { upTo: 100, flatFee: 5000 },
+]);
+```
+
+Result:
+
+- units `1-30` enter tier 1, so tier 1 adds `1000`
+- unit `31` enters tier 2, so tier 2 adds `5000`
+- total = `6000`
+
+#### `.volume(tiers, config?)`
+
+Create all-units pricing where the reached tier applies to all billable usage.
+
+```ts
+apiCalls.volume([
+  { upTo: 1000, unitPrice: 100 },
+  { upTo: 10000, unitPrice: 80 },
+  { upTo: null, unitPrice: 50 },
+]);
+```
+
+For 1,500 units, all 1,500 units are billed at tier 2's `unitPrice`.
+
+If a tier includes `flatFee`, only the reached tier's `flatFee` is applied.
+Volume pricing is not cumulative across multiple tiers.
+
+Example with billable usage of `31`:
+
+```ts
+apiCalls.volume([
+  { upTo: 30, flatFee: 1000 },
+  { upTo: 100, flatFee: 5000 },
+]);
+```
+
+Result:
+
+- usage reaches tier 2
+- only tier 2 applies
+- total = `5000`
+
+### Graduated vs volume
+
+Both models use tiers, but they answer different pricing questions:
+
+- `graduated`: "what price applies to each chunk of usage?"
+- `volume`: "what price applies to the total after I know the final band?"
+
+For the same `31` billable units:
+
+```ts
+const tiers = [
+  { upTo: 30, unitPrice: 100 },
+  { upTo: 100, unitPrice: 50 },
+];
+```
+
+- `graduated` = `30 * 100 + 1 * 50 = 3050`
+- `volume` = `31 * 50 = 1550`
+
+Use `graduated` when pricing should accumulate step by step. Use `volume` when
+crossing into a lower band should reprice all billable usage at that band's
+rate.
+
+#### `.config(opts)`
+
+Create a plan feature entry with full config object.
+
+```ts
+apiCalls.config({
+  limit: 50000,
+  reset: "monthly",
+  overage: "charge",
+  ratingModel: "graduated",
+  tiers: [
+    { upTo: 10000, unitPrice: 10 },
+    { upTo: null, unitPrice: 5 },
+  ],
+});
+```
+
+#### `.check(customer, opts?)`
+
+Check if a customer has access to this feature.
+
+```ts
+const result = await apiCalls.check("user_123");
+const result = await apiCalls.check("user_123", { value: 5 });
+const result = await apiCalls.check("user_123", { sendEvent: true });
+```
+
+Returns `Promise<CheckResult>`.
+
+#### `.track(customer, value?, opts?)`
+
+Track usage for this feature.
+
+```ts
+await apiCalls.track("user_123");
+await apiCalls.track("user_123", 5);
+await apiCalls.track("user_123", 1, { entity: "workspace_123" });
+```
+
+Returns `Promise<TrackResult>`.
+
+---
+
+## `boolean(slug, opts?)`
+
+Create a boolean feature handle. Boolean features are either enabled or disabled per plan — no usage tracking.
+
+```ts
+import { boolean } from "@digvijay-x1/billwave";
+
+const analytics = boolean("analytics", { name: "Analytics Dashboard" });
+```
+
+### Parameters
+
+Same as `metered()`.
+
+### Methods
+
+#### `.on()`
+
+Feature is included in this plan.
+
+```ts
+analytics.on();
+```
+
+#### `.off()`
+
+Feature is NOT included in this plan.
+
+```ts
+analytics.off();
+```
+
+#### `.check(customer, opts?)`
+
+Check if a customer has access to this feature.
+
+```ts
+const { allowed } = await analytics.check("user_123");
+```
+
+Returns `Promise<CheckResult>`.
+
+<Callout type="info">
+  Boolean features have no `.track()` method — the type system enforces this.
+</Callout>
+
+---
+
+## `entity(slug, opts?)`
+
+Create a **non-consumable** feature handle. Entity features represent persistent resources like seats, projects, or workspaces — things you add and remove to consume capacity, not counters that reset.
+
+```ts
+import { entity } from "@digvijay-x1/billwave";
+
+const seats = entity("seats", { name: "Team Seats" });
+const projects = entity("projects", { name: "Projects" });
+```
+
+### Parameters
+
+Same as `metered()`.
+
+### Plan methods
+
+#### `.limit(value, config?)`
+
+Set the maximum number of entities allowed.
+
+```ts
+seats.limit(5);
+seats.limit(5, { overage: "charge", overagePrice: 500 });
+```
+
+| Parameter             | Type                  | Default   | Description                             |
+| --------------------- | --------------------- | --------- | --------------------------------------- |
+| `value`               | `number`              | —         | Maximum entities allowed                |
+| `config.overage`      | `"block" \| "charge"` | `"block"` | What happens when limit is exceeded     |
+| `config.overagePrice` | `number`              | —         | Price per extra entity (minor currency) |
+
+<Callout type="info">
+  Entity features default to `reset: "never"` — the count reflects current
+  state, not periodic usage.
+</Callout>
+
+#### `.unlimited()`
+
+No limit on the number of entities.
+
+```ts
+seats.unlimited();
+```
+
+### Runtime methods
+
+#### `.add(customer, opts)`
+
+Add an entity (e.g., a seat). Validates against the plan limit.
+
+```ts
+const result = await seats.add("org@acme.com", {
+  entity: "user_123",
+  name: "John Doe",
+  email: "john@acme.com",
+  metadata: { role: "admin" },
+});
+
+console.log(result.count); // 3
+console.log(result.remaining); // 2
+```
+
+| Parameter       | Type                      | Required | Description          |
+| --------------- | ------------------------- | -------- | -------------------- |
+| `customer`      | `string`                  | Yes      | Customer ID or email |
+| `opts.entity`   | `string`                  | Yes      | Unique entity ID     |
+| `opts.name`     | `string`                  | No       | Display name         |
+| `opts.email`    | `string`                  | No       | Email address        |
+| `opts.metadata` | `Record<string, unknown>` | No       | Custom metadata      |
+
+Returns `Promise<AddEntityResult>`.
+
+#### `.remove(customer, entity)`
+
+Remove an entity. Frees the slot immediately.
+
+```ts
+await seats.remove("org@acme.com", "user_123");
+```
+
+Returns `Promise<RemoveEntityResult>`.
+
+#### `.list(customer)`
+
+List all active entities for this feature.
+
+```ts
+const { entities, total } = await seats.list("org@acme.com");
+
+for (const seat of entities) {
+  console.log(seat.id, seat.name, seat.status);
+}
+```
+
+Returns `Promise<ListEntitiesResult>`.
+
+#### `.check(customer, opts?)`
+
+Check how many entities exist and if more can be added.
+
+```ts
+const result = await seats.check("org@acme.com");
+console.log(result.allowed); // true if under limit
+console.log(result.balance); // remaining slots
+```
+
+Returns `Promise<CheckResult>`.
+
+<Callout type="info">
+  Entity features have no `.track()` method — entities are managed via `.add()`
+  and `.remove()`. The type system enforces this.
+</Callout>
+
+---
+
+## `creditSystem(slug, config)`
+
+Create a credit system definition. A credit system abstracts usage across multiple features into a single "credit" balance.
+
+```ts
+import { creditSystem, metered } from "@digvijay-x1/billwave";
+
+const gpt4 = metered("gpt-4");
+const dallE = metered("dall-e");
+
+const aiCredits = creditSystem("ai-credits", {
+  name: "AI Credits",
+  features: [
+    gpt4(20), // GPT-4 costs 20 credits per track()
+    dallE(50), // Dall-E costs 50 credits per track()
+  ],
+});
+```
+
+### Parameters
+
+| Parameter            | Type              | Required | Description                                     |
+| -------------------- | ----------------- | -------- | ----------------------------------------------- |
+| `slug`               | `string`          | Yes      | Unique credit system identifier                 |
+| `config.name`        | `string`          | No       | Human-readable name                             |
+| `config.description` | `string`          | No       | Description                                     |
+| `config.features`    | `FeatureHandle[]` | Yes      | Array of features that consume from this system |
+
+### Methods
+
+#### `.credits(amount, config?)`
+
+Include a specific amount of credits for this system in a plan.
+
+```ts
+aiCredits.credits(1000, { reset: "monthly", overage: "charge" });
+```
+
+---
+
+## `creditPack(slug, config)`
+
+Create a credit pack definition. Credit packs are one-time purchasable bundles of credits that top up a customer's prepaid balance. They're ideal for letting customers buy additional usage beyond their plan limits.
+
+```ts
+import { creditPack, creditSystem } from "@digvijay-x1/billwave";
+
+const apiCredits = creditSystem("api-credits", {
+  name: "API Credits",
+  features: [apiCalls(1)],
+});
+
+const starterPack = creditPack("starter-pack", {
+  name: "Starter Pack",
+  description: "500 API credits",
+  credits: 500,
+  price: 1000, // $10.00
+  currency: "USD",
+  creditSystem: "api-credits", // Must match a credit system slug
+});
+
+const proPack = creditPack("pro-pack", {
+  name: "Pro Pack",
+  description: "2500 API credits",
+  credits: 2500,
+  price: 3500, // $35.00
+  currency: "USD",
+  creditSystem: "api-credits",
+});
+
+export const billwave = new Billwave({
+  secretKey: process.env.BILLWAVE_SECRET_KEY!,
+  catalog: [
+    apiCredits,
+    starterPack,
+    proPack,
+    // ... your plans
+  ],
+});
+```
+
+### Parameters
+
+| Parameter             | Type                      | Required | Description                                        |
+| --------------------- | ------------------------- | -------- | -------------------------------------------------- |
+| `slug`                | `string`                  | Yes      | Unique credit pack identifier                      |
+| `config.name`         | `string`                  | Yes      | Human-readable pack name                           |
+| `config.description`  | `string`                  | No       | Pack description shown to customers                |
+| `config.credits`      | `number`                  | Yes      | Number of credits in the pack                      |
+| `config.price`        | `number`                  | Yes      | Price in minor currency units (e.g. 1000 = $10.00) |
+| `config.currency`     | `Currency`                | Yes      | Currency code (`"NGN"`, `"USD"`, etc.)             |
+| `config.creditSystem` | `string`                  | Yes      | Slug of the credit system this pack is tied to     |
+| `config.provider`     | `string`                  | No       | Override the default payment provider              |
+| `config.metadata`     | `Record<string, unknown>` | No       | Custom metadata                                    |
+
+### Methods
+
+Credit packs don't have methods like features do. Instead, they're purchased using the [`addon()`](/sdk/addon) method:
+
+```ts
+// Customer buys a credit pack
+const result = await billwave.addon({
+  customer: "user_123",
+  pack: "starter-pack",
+});
+
+if (result.requiresCheckout) {
+  // Redirect to payment
+  res.redirect(result.checkoutUrl!);
+} else {
+  console.log(`Added ${result.credits} credits`);
+  console.log(`New balance: ${result.balance}`);
+}
+```
+
+---
+
+## `plan(slug, config)`
+
+Create a plan definition for the catalog.
+
+```ts
+import { plan } from "@digvijay-x1/billwave";
+
+plan("pro", {
+  name: "Pro",
+  price: 500000,
+  currency: "NGN",
+  interval: "monthly",
+  features: [
+    apiCalls.limit(50000, { overage: "charge", overagePrice: 100 }),
+    aiCredits.credits(1000),
+    analytics.on(),
+    seats.limit(20),
+  ],
+});
+```
+
+### Parameters
+
+| Parameter            | Type                      | Required | Description                                                  |
+| -------------------- | ------------------------- | -------- | ------------------------------------------------------------ |
+| `slug`               | `string`                  | Yes      | Unique plan identifier                                       |
+| `config.name`        | `string`                  | Yes      | Human-readable plan name                                     |
+| `config.price`       | `number`                  | Yes      | Price in minor currency units (e.g. kobo)                    |
+| `config.currency`    | `Currency`                | Yes      | Currency code (`"NGN"`, `"GHS"`, `"ZAR"`, `"KES"`, `"USD"`)  |
+| `config.interval`    | `PlanInterval`            | Yes      | Billing interval (`"monthly"`, `"yearly"`, etc.)             |
+| `config.features`    | `PlanFeatureEntry[]`      | Yes      | Array of feature entries from `.limit()`, `.credits()`, etc. |
+| `config.description` | `string`                  | No       | Plan description                                             |
+| `config.planGroup`   | `string`                  | No       | Group for upgrade/downgrade logic                            |
+| `config.trialDays`   | `number`                  | No       | Trial period in days                                         |
+| `config.autoEnable`  | `boolean`                 | No       | Auto-assign this plan to new customers (default: `false`)    |
+| `config.metadata`    | `Record<string, unknown>` | No       | Custom metadata                                              |
+
+---
+
+## `billwave.sync()`
+
+Push the catalog to the API. Creates and updates features, credit systems, and plans.
+
+```ts
+const result = await billwave.sync();
+```
+
+### Returns `Promise<SyncResult>`
+
+```ts
+interface SyncResult {
+  success: boolean;
+  features: { created: string[]; updated: string[]; unchanged: string[] };
+  creditSystems: { created: string[]; updated: string[]; unchanged: string[] };
+  plans: { created: string[]; updated: string[]; unchanged: string[] };
+  warnings: string[];
+}
+```
+
+---
+
+## CLI: `billwave sync`
+
+Push a catalog from the command line.
+
+```bash
+npx @digvijay-x1/billwave-cli sync [options]
+```
+
+| Option            | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| `--config <path>` | Path to config file (default: `./billwave.config.ts`)      |
+| `--dry-run`       | Show what would change without applying               |
+| `--key <api-key>` | API secret key (or set `BILLWAVE_SECRET_KEY` env var) |
+| `--url <api-url>` | API URL override                                      |
+
+### Example config file
+
+```ts
+// billwave.config.ts
+import {
+  Billwave,
+  metered,
+  boolean,
+  entity,
+  creditSystem,
+  plan,
+} from "@digvijay-x1/billwave";
+
+const apiCalls = metered("api-calls");
+const aiCredits = creditSystem("ai-credits", {
+  features: [apiCalls(1)],
+});
+
+export default new Billwave({
+  secretKey: process.env.BILLWAVE_SECRET_KEY!,
+  catalog: [
+    plan("starter", {
+      name: "Starter",
+      price: 0,
+      currency: "NGN",
+      interval: "monthly",
+      features: [aiCredits.credits(1000)],
+    }),
+    plan("pro", {
+      name: "Pro",
+      price: 500000,
+      currency: "NGN",
+      interval: "monthly",
+      features: [aiCredits.credits(50000)],
+    }),
+  ],
+});
+```
