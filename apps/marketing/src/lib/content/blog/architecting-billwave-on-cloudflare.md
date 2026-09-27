@@ -6,7 +6,7 @@ readTime: "16 min read"
 category: "Engineering"
 layout: blog
 thumbnail: ""
-author: "yaqeen"
+author: "Digvijay"
 ---
 
 Billwave makes billing decisions on the request path. For a metered feature, a single check may need to read subscription state, current usage, credits, reset windows, overage rules, entitlements, and customer-level billing configuration, then decide whether to allow usage and how that usage should be accounted for.
@@ -17,7 +17,7 @@ That creates a few immediate constraints. The check has to be fast enough to sit
 
 If I had to summarize Billwave in one diagram, it would look like this:
 
-![Billwave architecture diagram showing Workers, D1, Durable Objects, billing, and workflows](https://mac-file.yaqeen.me/37D37FA0-I%20Business%20D1.png)
+![Billwave architecture diagram showing Workers, D1, Durable Objects, billing, and workflows](/images/blog/architecting-billwave-on-cloudflare-overview.png)
 
 Each primitive gets the part of the problem it is actually good at.
 
@@ -168,7 +168,7 @@ If we had left that as a plain background function or an in-request promise chai
 
 Here is the architecture in a second diagram:
 
-![architecture](https://mac-file.yaqeen.me/932374D2-Loaa%20AnU%20Ilea.png)
+![Billwave overage billing workflow: usage threshold, queued billing job, workflow steps, and subscription cache invalidation](/images/blog/architecting-billwave-on-cloudflare-workflow.png)
 
 That keeps the core API honest: entitlement checks stay responsive, billing work becomes durable, and failures become visible and retryable.
 
