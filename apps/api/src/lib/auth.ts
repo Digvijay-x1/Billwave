@@ -154,7 +154,7 @@ export function auth(env: Env) {
           advanced: {
             crossSubDomainCookies: {
               enabled: true,
-              domain: ".billwave.example",
+              domain: ".billwave.digvijayrawat.me",
             },
           },
         }

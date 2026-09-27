@@ -3,6 +3,7 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-01-31",
   "compatibility_flags": ["nodejs_compat", "durable_object_alarms"],
+  "workers_dev": true,
 
   // D1 Databases (local dev — both point to same DB)
   "d1_databases": [
@@ -151,21 +152,21 @@
   "env": {
     "test": {
       "name": "billwave-api-test",
+      "workers_dev": true,
       "observability": { "enabled": true },
       "vars": {
         "ENVIRONMENT": "test",
         "ANALYTICS_DATASET": "billwave_api_test",
         "USE_EVENTS_PIPELINE": "false",
-        "BETTER_AUTH_URL": "https://billwave-api-test.hackerearthx1.workers.dev",
+        "BETTER_AUTH_URL": "https://sandbox-api.billwave.digvijayrawat.me",
         "DASHBOARD_URL": "https://billwave.digvijayrawat.me",
       },
-
-//      "routes": [
-//        {
-//          "pattern": "sandbox.billwave.example",
-//          "custom_domain": true,
-//        },
-//      ],
+      "routes": [
+        {
+          "pattern": "sandbox-api.billwave.digvijayrawat.me",
+          "custom_domain": true,
+        },
+      ],
       "d1_databases": [
         {
           "binding": "DB",
@@ -256,19 +257,20 @@
     },
     "live": {
       "name": "billwave-api-live",
+      "workers_dev": true,
       "vars": {
         "ENVIRONMENT": "live",
         "ANALYTICS_DATASET": "billwave_api_live",
         "USE_EVENTS_PIPELINE": "false",
-        "BETTER_AUTH_URL": "https://billwave-api-live.hackerearthx1.workers.dev",
+        "BETTER_AUTH_URL": "https://api.billwave.digvijayrawat.me",
         "DASHBOARD_URL": "https://billwave.digvijayrawat.me",
       },
-//      "routes": [
-//        {
-//          "pattern": "api.billwave.example",
-//          "custom_domain": true,
-//        },
-//      ],
+      "routes": [
+        {
+          "pattern": "api.billwave.digvijayrawat.me",
+          "custom_domain": true,
+        },
+      ],
       "d1_databases": [
         {
           "binding": "DB",
