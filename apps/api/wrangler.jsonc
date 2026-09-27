@@ -159,7 +159,7 @@
         "ANALYTICS_DATASET": "billwave_api_test",
         "USE_EVENTS_PIPELINE": "false",
         "BETTER_AUTH_URL": "https://sandbox-api.billwave.digvijayrawat.me",
-        "DASHBOARD_URL": "https://billwave.digvijayrawat.me",
+        "DASHBOARD_URL": "https://app.billwave.digvijayrawat.me",
       },
       "routes": [
         {
@@ -263,7 +263,7 @@
         "ANALYTICS_DATASET": "billwave_api_live",
         "USE_EVENTS_PIPELINE": "false",
         "BETTER_AUTH_URL": "https://api.billwave.digvijayrawat.me",
-        "DASHBOARD_URL": "https://billwave.digvijayrawat.me",
+        "DASHBOARD_URL": "https://app.billwave.digvijayrawat.me",
       },
       "routes": [
         {

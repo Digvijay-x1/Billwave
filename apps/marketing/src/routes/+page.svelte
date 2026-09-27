@@ -40,9 +40,9 @@
     name="description"
     content="Billwave - Billing Infrastructure for AI SaaS. Subscriptions, usage-based billing, and feature gating in 3 API calls."
   />
-  <link rel="canonical" href="https://billwave.example/" />
+  <link rel="canonical" href="https://billwave.digvijayrawat.me/" />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://billwave.example/" />
+  <meta property="og:url" content="https://billwave.digvijayrawat.me/" />
   <meta
     property="og:title"
     content="Billwave — Billing Infrastructure for AI SaaS"
@@ -51,12 +51,12 @@
     property="og:description"
     content="Billwave - Billing Infrastructure for AI SaaS. Subscriptions, usage-based billing, and feature gating in 3 API calls."
   />
-  <meta property="og:image" content="https://billwave.example/og.jpg" />
+  <meta property="og:image" content="https://billwave.digvijayrawat.me/og.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@billwave" />
-  <meta name="twitter:url" content="https://billwave.example/" />
+  <meta name="twitter:url" content="https://billwave.digvijayrawat.me/" />
   <meta
     name="twitter:title"
     content="Billwave — Billing Infrastructure for AI SaaS"
@@ -65,7 +65,7 @@
     name="twitter:description"
     content="Billwave - Billing Infrastructure for AI SaaS. Subscriptions, usage-based billing, and feature gating in 3 API calls."
   />
-  <meta name="twitter:image" content="https://billwave.example/og.jpg" />
+  <meta name="twitter:image" content="https://billwave.digvijayrawat.me/og.jpg" />
   {@html `<script type="application/ld+json">${structuredData}</script>`}
 </svelte:head>
 
@@ -85,7 +85,7 @@
       </p>
 
       <div class="mt-9 flex flex-wrap items-center justify-center gap-3">
-        <a href="https://app.billwave.example" class="btn btn-primary btn-lg !px-5 !py-2.5 !text-base">
+        <a href="https://app.billwave.digvijayrawat.me" class="btn btn-primary btn-lg !px-5 !py-2.5 !text-base">
           Start free
         </a>
         <a href="/talk-to-founder" class="btn btn-secondary btn-lg !px-5 !py-2.5 !text-base">

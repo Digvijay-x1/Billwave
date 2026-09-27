@@ -34,7 +34,7 @@
 
   // Dynamic OG generator using Cloudinary
   function getOgImage(title?: string, description?: string) {
-    if (!title) return "https://billwave.example/og.jpg";
+    if (!title) return "https://billwave.digvijayrawat.me/og.jpg";
     const cloudName = "dtrqaqezs";
     const baseImageId = "og-plain_xvn4jj";
     const encodedTitle = encodeURIComponent(
@@ -73,12 +73,12 @@
         name: "Billwave",
         logo: {
           "@type": "ImageObject",
-          url: "https://billwave.example/logo.svg",
+          url: "https://billwave.digvijayrawat.me/logo.svg",
         },
       },
       mainEntityOfPage: {
         "@type": "WebPage",
-        "@id": `https://billwave.example/pricing-templates/${template.slug}`,
+        "@id": `https://billwave.digvijayrawat.me/pricing-templates/${template.slug}`,
       },
     }).replace(/</g, "\\u003c"),
   );
@@ -89,7 +89,7 @@
   <meta name="description" content={template.summary} />
   <link
     rel="canonical"
-    href={`https://billwave.example/pricing-templates/${template.slug}`}
+    href={`https://billwave.digvijayrawat.me/pricing-templates/${template.slug}`}
   />
   <meta property="og:type" content="article" />
   <meta property="og:title" content={`${template.title} Template | Billwave`} />
