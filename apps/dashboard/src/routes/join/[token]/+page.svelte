@@ -132,7 +132,7 @@
   >
     <div class="absolute inset-0">
       <img
-        src="https://mac-file.XXXXXX.me/87C9A6BB-3D4410F0-72E6-46B0-9B54-142A675819EE_1_201_a.jpeg"
+        src="/images/join-hero.jpg"
         alt=""
         class="w-full h-full object-cover"
       />
@@ -242,7 +242,7 @@
           <div
             class="w-20 h-20 rounded-full bg-success-bg flex items-center justify-center mb-6 border border-success/20"
           >
-            <img src="https://mac-file.XXXXXX.me/407C7F04-annotely_image%20%284%29.png" alt="" class="h-full w-full object-contain">
+            <img src="/images/join-gift.png" alt="" class="h-full w-full object-contain">
           </div>
           <h2
             class="text-2xl font-bold text-text-primary uppercase tracking-tight mb-2"
@@ -262,7 +262,7 @@
           <div
             class="w-20 h-20 rounded-full flex items-center justify-center mb-6 "
           >
-            <img src="https://mac-file.XXXXXX.me/407C7F04-annotely_image%20%284%29.png" alt="" class="h-full w-full object-contain">
+            <img src="/images/join-gift.png" alt="" class="h-full w-full object-contain">
           </div>
           <h2
             class="text-2xl font-bold text-text-primary uppercase tracking-tight mb-2"

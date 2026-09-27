@@ -6,7 +6,7 @@ readTime: "7 min read"
 category: "Product & Strategy"
 layout: blog
 thumbnail: ""
-author: "XXXXXX"
+author: "Digvijay"
 ---
 
 I think a lot of AI products accidentally teach users to stop coming back.
@@ -26,7 +26,7 @@ a matter of time.
 
 This tweet got me thinking about that again:
 
-![Tweet about improving retention for AI agents with a daily allowance on top of monthly allowance and rollover balances](https://mac-file.XXXXXX.me/D0D40586-Screenshot%202026-04-02%20at%2007.53.14.png)
+![Tweet about improving retention for AI agents with a daily allowance on top of monthly allowance and rollover balances](/images/blog/how-to-price-your-ai-app-tweet.png)
 
 *[Original tweet](https://x.com/ay_ushr/status/2038898223851479488) that sparked this post.*
 
