@@ -138,6 +138,7 @@ export function auth(env: Env) {
       "http://localhost:5176",
       "https://app.billwave.example",
       "https://billwave-dashboard.hackerearthx1.workers.dev",
+      "https://billwave.digvijayrawat.me",
     ],
 
     advanced: {
