@@ -9,11 +9,11 @@
     "directory": ".svelte-kit/cloudflare"
   },
   "vars": {
-    "VITE_DOCS_URL": "https://billwave.example/docs",
-    "VITE_API_URL_TEST": "https://sandbox.billwave.example",
-    "VITE_API_URL_LIVE": "https://api.billwave.example",
-    "PUBLIC_API_URL_TEST": "https://sandbox.billwave.example",
-    "PUBLIC_API_URL_LIVE": "https://api.billwave.example",
+    "VITE_DOCS_URL": "https://billwave-docs.hackerearthx1.workers.dev",
+    "VITE_API_URL_TEST": "https://billwave-api-test.hackerearthx1.workers.dev",
+    "VITE_API_URL_LIVE": "https://billwave-api-live.hackerearthx1.workers.dev",
+    "PUBLIC_API_URL_TEST": "https://billwave-api-test.hackerearthx1.workers.dev",
+    "PUBLIC_API_URL_LIVE": "https://billwave-api-live.hackerearthx1.workers.dev",
   },
 
   "observability": {
