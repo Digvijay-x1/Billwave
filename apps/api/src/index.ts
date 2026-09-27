@@ -151,6 +151,7 @@ app.use(
         "https://simulator.billwave.example",
         "https://billwave-dashboard.hackerearthx1.workers.dev",
         "https://billwave.digvijayrawat.me",
+        "https://app.billwave.digvijayrawat.me",
       ];
       if (origin && allowedOrigins.includes(origin)) {
         return origin;

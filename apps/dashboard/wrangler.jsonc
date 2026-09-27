@@ -7,7 +7,7 @@
   "workers_dev": true,
   "routes": [
     {
-      "pattern": "billwave.digvijayrawat.me",
+      "pattern": "app.billwave.digvijayrawat.me",
       "custom_domain": true,
     },
   ],
