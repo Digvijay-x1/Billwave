@@ -157,7 +157,7 @@
         "ANALYTICS_DATASET": "billwave_api_test",
         "USE_EVENTS_PIPELINE": "false",
         "BETTER_AUTH_URL": "https://billwave-api-test.hackerearthx1.workers.dev",
-        "DASHBOARD_URL": "https://billwave-dashboard.hackerearthx1.workers.dev",
+        "DASHBOARD_URL": "https://billwave.digvijayrawat.me",
       },
 
 //      "routes": [
@@ -219,27 +219,27 @@
       },
       "workflows": [
         {
-          "name": "trial-end-workflow",
+          "name": "trial-end-workflow-test",
           "binding": "TRIAL_END_WORKFLOW",
           "class_name": "TrialEndWorkflow",
         },
         {
-          "name": "downgrade-workflow",
+          "name": "downgrade-workflow-test",
           "binding": "DOWNGRADE_WORKFLOW",
           "class_name": "DowngradeWorkflow",
         },
         {
-          "name": "plan-upgrade-workflow",
+          "name": "plan-upgrade-workflow-test",
           "binding": "PLAN_UPGRADE_WORKFLOW",
           "class_name": "PlanUpgradeWorkflow",
         },
         {
-          "name": "renewal-setup-workflow",
+          "name": "renewal-setup-workflow-test",
           "binding": "RENEWAL_SETUP_WORKFLOW",
           "class_name": "RenewalSetupRetryWorkflow",
         },
         {
-          "name": "overage-billing-workflow",
+          "name": "overage-billing-workflow-test",
           "binding": "OVERAGE_BILLING_WORKFLOW",
           "class_name": "OverageBillingWorkflow",
         },
@@ -261,7 +261,7 @@
         "ANALYTICS_DATASET": "billwave_api_live",
         "USE_EVENTS_PIPELINE": "false",
         "BETTER_AUTH_URL": "https://billwave-api-live.hackerearthx1.workers.dev",
-        "DASHBOARD_URL": "https://billwave-dashboard.hackerearthx1.workers.dev",
+        "DASHBOARD_URL": "https://billwave.digvijayrawat.me",
       },
 //      "routes": [
 //        {
