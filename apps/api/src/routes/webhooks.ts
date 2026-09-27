@@ -1,0 +1,768 @@
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { and, eq, or } from "drizzle-orm";
+import { schema } from "@digvijay-x1/db";
+import type { ProviderAccount, ProviderAdapter } from "@digvijay-x1/adapters";
+import type { Env, Variables } from "../index";
+import type { AnalyticsEnv } from "../lib/analytics-engine";
+import { WebhookHandler } from "../lib/webhooks";
+import { decrypt } from "../lib/encryption";
+import { WebhookError, errorToResponse } from "../lib/errors";
+import { getProviderRegistry } from "../lib/providers";
+import {
+  getManagedSandboxAccount,
+  isManagedSandboxRuntime,
+  listManagedSandboxProviderIds,
+  managedSandboxWebhookSecret,
+} from "../lib/managed-sandbox";
+import {
+  badRequestResponse,
+  internalServerErrorResponse,
+  jsonContent,
+  notFoundResponse,
+  unauthorizedResponse,
+} from "../openapi/common";
+
+export type WebhookRouteDependencies = {
+  getProviderRegistry: typeof getProviderRegistry;
+  decrypt: typeof decrypt;
+  createWebhookHandler: (params: {
+    db: Variables["db"];
+    organizationId: string;
+    adapter: ProviderAdapter;
+    account: ProviderAccount | undefined;
+    trialEndWorkflow: Env["TRIAL_END_WORKFLOW"];
+    planUpgradeWorkflow: Env["PLAN_UPGRADE_WORKFLOW"];
+    renewalSetupWorkflow: Env["RENEWAL_SETUP_WORKFLOW"];
+    cache: Env["CACHE"];
+    analyticsEnv: AnalyticsEnv;
+  }) => {
+    handle(event: unknown): Promise<{
+      isErr(): boolean;
+      isOk(): boolean;
+      error?: unknown;
+    }>;
+  };
+};
+
+const defaultDependencies: WebhookRouteDependencies = {
+  getProviderRegistry,
+  decrypt,
+  createWebhookHandler: ({
+    db,
+    organizationId,
+    adapter,
+    account,
+    trialEndWorkflow,
+    planUpgradeWorkflow,
+    renewalSetupWorkflow,
+    cache,
+    analyticsEnv,
+  }) =>
+    new WebhookHandler(db, organizationId, {
+      adapter,
+      account,
+      trialEndWorkflow,
+      planUpgradeWorkflow,
+      renewalSetupWorkflow,
+      cache,
+      analyticsEnv,
+    }),
+};
+
+export function createWebhookRoutes(
+  overrides: Partial<WebhookRouteDependencies> = {},
+) {
+  const deps = { ...defaultDependencies, ...overrides };
+  const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
+
+  const webhookResponseSchema = z
+    .object({
+      success: z.boolean().optional(),
+      received: z.boolean().optional(),
+      skipped: z.boolean().optional(),
+      error: z.string().optional(),
+    })
+    .passthrough();
+
+  const sandboxWebhookRoute = createRoute({
+    method: "post",
+    path: "/webhooks/sandbox/{provider}",
+    operationId: "webhookSandbox",
+    tags: ["Webhooks"],
+    summary: "Receive a webhook for the Billwave-managed sandbox account",
+    description:
+      "Shared sandbox webhook endpoint. Billwave registers this URL once per provider on its own test account; events are verified with the managed secret and routed to the organization named in `metadata.organization_id`. Events without organization metadata are acknowledged and dropped. Not available on the live host.",
+    security: [],
+    request: {
+      params: z.object({
+        provider: z.string(),
+      }),
+    },
+    responses: {
+      200: {
+        description: "Webhook processed or acknowledged successfully",
+        ...jsonContent(webhookResponseSchema),
+      },
+      400: badRequestResponse,
+      401: unauthorizedResponse,
+      404: notFoundResponse,
+    },
+  });
+
+  const paystackWebhookRoute = createRoute({
+    method: "post",
+    path: "/webhooks/{organizationId}",
+    operationId: "webhookPaystack",
+    tags: ["Webhooks"],
+    summary: "Receive a Paystack webhook",
+    description:
+      "Provider webhook endpoint for Paystack. The organization can be addressed by ID or slug.",
+    security: [],
+    request: {
+      params: z.object({
+        organizationId: z.string(),
+      }),
+    },
+    responses: {
+      200: {
+        description: "Webhook processed or acknowledged successfully",
+        ...jsonContent(webhookResponseSchema),
+      },
+      400: badRequestResponse,
+      401: unauthorizedResponse,
+      404: notFoundResponse,
+      500: internalServerErrorResponse,
+    },
+  });
+
+  const providerWebhookRoute = createRoute({
+    method: "post",
+    path: "/webhooks/{organizationId}/{provider}",
+    operationId: "webhook",
+    tags: ["Webhooks"],
+    summary: "Receive a provider webhook",
+    description:
+      "Provider webhook endpoint for any supported payment adapter. The organization can be addressed by ID or slug.",
+    security: [],
+    request: {
+      params: z.object({
+        organizationId: z.string(),
+        provider: z.string(),
+      }),
+    },
+    responses: {
+      200: {
+        description: "Webhook processed or acknowledged successfully",
+        ...jsonContent(webhookResponseSchema),
+      },
+      400: badRequestResponse,
+      401: unauthorizedResponse,
+      404: notFoundResponse,
+      500: internalServerErrorResponse,
+    },
+  });
+
+  const maskSecretForLog = (value: string | null | undefined) => {
+    if (!value) return "<empty>";
+    if (value.length <= 10) return `${value.slice(0, 2)}***`;
+    return `${value.slice(0, 6)}...${value.slice(-4)} (len=${value.length})`;
+  };
+
+  function collectHeaders(c: any): Record<string, string> {
+    const reqHeaders: Record<string, string> = {};
+    c.req.raw.headers.forEach((value: string, key: string) => {
+      reqHeaders[key.toLowerCase()] = value;
+    });
+    return reqHeaders;
+  }
+
+  /** Resolve an org by id or slug from the auth DB and mirror it into billing. */
+  async function resolveOrganization(c: any, organizationRef: string) {
+    const db = c.get("db");
+    const authDb = c.get("authDb");
+
+    const org = await authDb.query.organizations.findFirst({
+      where: or(
+        eq(schema.organizations.id, organizationRef),
+        eq(schema.organizations.slug, organizationRef),
+      ),
+    });
+    if (!org) return null;
+
+    const existingOrgInBilling = await db.query.organizations.findFirst({
+      where: eq(schema.organizations.id, org.id),
+      columns: { id: true },
+    });
+    if (!existingOrgInBilling) {
+      await db.insert(schema.organizations).values(org).onConflictDoNothing();
+    }
+    return org;
+  }
+
+  async function dispatchEvent(
+    c: any,
+    params: {
+      organizationId: string;
+      adapter: ProviderAdapter;
+      account: ProviderAccount | undefined;
+      event: unknown;
+    },
+  ) {
+    const handler = deps.createWebhookHandler({
+      db: c.get("db"),
+      organizationId: params.organizationId,
+      adapter: params.adapter,
+      account: params.account,
+      trialEndWorkflow: c.env.TRIAL_END_WORKFLOW,
+      planUpgradeWorkflow: c.env.PLAN_UPGRADE_WORKFLOW,
+      renewalSetupWorkflow: c.env.RENEWAL_SETUP_WORKFLOW,
+      cache: c.env.CACHE,
+      analyticsEnv: {
+        ANALYTICS: c.env.ANALYTICS,
+        ENVIRONMENT: c.env.ENVIRONMENT,
+        CF_ACCOUNT_ID: c.env.CF_ACCOUNT_ID,
+        CF_ANALYTICS_READ_TOKEN: c.env.CF_ANALYTICS_READ_TOKEN,
+        ANALYTICS_DATASET: c.env.ANALYTICS_DATASET,
+        EVENTS_PIPELINE: c.env.EVENTS_PIPELINE,
+        R2_SQL_TOKEN: c.env.R2_SQL_TOKEN,
+        R2_WAREHOUSE: c.env.R2_WAREHOUSE,
+      },
+    });
+
+    const handleResult = await handler.handle(params.event);
+    if (handleResult.isErr()) {
+      console.error("Webhook handling error:", handleResult.error);
+    }
+  }
+
+  async function handleWebhookRequest(
+    c: any,
+    organizationId: string,
+    providerId: string,
+  ) {
+    console.log(
+      `[WEBHOOK-ROUTE] Received webhook for org=${organizationId}, provider=${providerId}`,
+    );
+
+    const registry = deps.getProviderRegistry();
+    const adapter = registry.get(providerId);
+    if (!adapter) {
+      console.error(`[WEBHOOK-ROUTE] Unknown provider: ${providerId}`);
+      return c.json({ error: `Unsupported provider: ${providerId}` }, 400);
+    }
+
+    const sigHeader =
+      adapter.signatureHeaderName || `x-${providerId}-signature`;
+    const signature = c.req.header(sigHeader);
+    console.log(
+      `[WEBHOOK-ROUTE] Signature header=${sigHeader}, hasSignature=${!!signature}`,
+    );
+
+    if (!signature) {
+      return c.json(
+        errorToResponse(new WebhookError({ reason: "missing_signature" })),
+        401,
+      );
+    }
+
+    const rawBody = await c.req.text();
+    const db = c.get("db");
+
+    const org = await resolveOrganization(c, organizationId);
+    if (!org) {
+      return c.json({ error: "Organization not found" }, 404);
+    }
+
+    const workerEnv = c.env.ENVIRONMENT === "live" ? "live" : "test";
+    let secret: string | null = null;
+    let secretSource: string | null = null;
+
+    const allProviderAccounts = await db.query.providerAccounts.findMany({
+      where: and(
+        eq(schema.providerAccounts.organizationId, org.id),
+        eq(schema.providerAccounts.providerId, providerId),
+      ),
+    });
+    const providerAccounts = allProviderAccounts.filter((pa: any) => {
+      const env = pa?.environment;
+      return !env || env === workerEnv;
+    });
+
+    const scopedProviderAccounts =
+      providerAccounts.length > 0 ? providerAccounts : allProviderAccounts;
+    let scopedProjects: any[] | undefined;
+    const getScopedProjects = async () => {
+      if (scopedProjects !== undefined) return scopedProjects;
+
+      const projects = await db.query.projects.findMany({
+        where: eq(schema.projects.organizationId, org.id),
+      });
+      const matchingProjects = projects.filter((project: any) => {
+        const activeEnvironment = project?.activeEnvironment;
+        const legacyEnvironment = project?.environment;
+        return (
+          activeEnvironment === workerEnv ||
+          legacyEnvironment === workerEnv ||
+          (!activeEnvironment && !legacyEnvironment)
+        );
+      });
+
+      scopedProjects =
+        matchingProjects.length > 0 ? matchingProjects : projects;
+      return scopedProjects;
+    };
+
+    let secretAccountId: string | null = null;
+    for (const pa of scopedProviderAccounts) {
+      const creds = (pa as any).credentials || {};
+      const potentialSecret =
+        creds.webhookSecret ||
+        (providerId === "paystack" ? creds.secretKey : null);
+
+      if (typeof potentialSecret === "string" && potentialSecret.length > 0) {
+        try {
+          secret = (
+            await deps.decrypt(potentialSecret, c.env.ENCRYPTION_KEY)
+          ).trim();
+          secretSource = creds.webhookSecret
+            ? "provider_account_webhook_secret_encrypted"
+            : "provider_account_api_key_encrypted";
+          secretAccountId = pa.id;
+          console.log(
+            `[WEBHOOK-ROUTE] Using provider account secret (${secretSource}) for org=${organizationId}, provider=${providerId}`,
+          );
+        } catch (e) {
+          console.warn(`[WEBHOOK-ROUTE] Failed to decrypt provider secret:`, e);
+          secret = potentialSecret.trim();
+          secretSource = creds.webhookSecret
+            ? "provider_account_webhook_secret_plaintext"
+            : "provider_account_api_key_plaintext";
+          secretAccountId = pa.id;
+          console.warn(
+            `[WEBHOOK-ROUTE] Falling back to raw provider secret for org=${organizationId}, provider=${providerId}`,
+          );
+        }
+        break;
+      }
+    }
+
+    if (!secret) {
+      for (const project of (await getScopedProjects()) ?? []) {
+        const projectWebhookSecret =
+          workerEnv === "live"
+            ? project.liveWebhookSecret
+            : project.testWebhookSecret;
+        secret = projectWebhookSecret || project.webhookSecret;
+        if (secret) {
+          secretSource = "project_webhook_secret";
+          break;
+        }
+      }
+    }
+
+    if (!secret) {
+      for (const project of (await getScopedProjects()) ?? []) {
+        const encryptedKey =
+          workerEnv === "live" ? project.liveSecretKey : project.testSecretKey;
+        if (!encryptedKey) {
+          continue;
+        }
+
+        try {
+          secret = (
+            await deps.decrypt(encryptedKey, c.env.ENCRYPTION_KEY)
+          ).trim();
+          secretSource = `project_${workerEnv}_secret_key_encrypted`;
+          console.log(
+            `[WEBHOOK-ROUTE] No webhookSecret, falling back to project ${workerEnv} secret key for org=${organizationId}`,
+          );
+        } catch (e) {
+          console.error(
+            `[WEBHOOK-ROUTE] Failed to decrypt project key for verification:`,
+            e,
+          );
+          secret = encryptedKey.trim();
+          secretSource = `project_${workerEnv}_secret_key_plaintext`;
+        }
+
+        if (secret) {
+          break;
+        }
+      }
+    }
+
+    // Billwave-managed sandbox: an org without its own test credentials that
+    // still registered the per-org URL on the shared provider account.
+    let managedAccount: ProviderAccount | null = null;
+    if (!secret) {
+      managedAccount = getManagedSandboxAccount(c.env, org.id, providerId);
+      secret = managedAccount
+        ? managedSandboxWebhookSecret(managedAccount)
+        : null;
+      if (secret) {
+        secretSource = "managed_sandbox";
+        console.log(
+          `[WEBHOOK-ROUTE] Using managed sandbox secret for org=${organizationId}, provider=${providerId}`,
+        );
+      }
+    }
+
+    if (!secret) {
+      console.error(
+        `[WEBHOOK-ROUTE] No secret available for org=${organizationId}, provider=${providerId}`,
+      );
+      return c.json({ error: "Webhook secret not configured" }, 500);
+    }
+
+    const reqHeaders = collectHeaders(c);
+
+    const verifyResult = await adapter.verifyWebhook({
+      signature,
+      payload: rawBody,
+      secret,
+      headers: reqHeaders,
+    });
+
+    if (verifyResult.isErr() || !verifyResult.value) {
+      console.error(
+        `[WEBHOOK-ROUTE] Signature verification FAILED for org=${organizationId}, provider=${providerId}`,
+      );
+      if (providerId === "polar") {
+        console.error("[WEBHOOK-ROUTE] Polar verification context", {
+          org: organizationId,
+          provider: providerId,
+          workerEnv,
+          secretSource,
+          secretAccountId,
+          providerAccountsTotal: allProviderAccounts.length,
+          providerAccountsScoped: scopedProviderAccounts.length,
+          secretPreview: maskSecretForLog(secret),
+          signatureHeaderPresent: !!signature,
+          signatureHeaderPreview: maskSecretForLog(signature),
+          webhookId: reqHeaders["webhook-id"] || null,
+          webhookTimestamp: reqHeaders["webhook-timestamp"] || null,
+          availableHeaders: Object.keys(reqHeaders),
+        });
+      }
+      return c.json(
+        errorToResponse(new WebhookError({ reason: "invalid_signature" })),
+        401,
+      );
+    }
+    console.log(`[WEBHOOK-ROUTE] Signature verified for org=${organizationId}`);
+
+    let rawPayload: Record<string, unknown>;
+    try {
+      rawPayload = JSON.parse(rawBody);
+    } catch {
+      return c.json(
+        errorToResponse(new WebhookError({ reason: "parse_failed" })),
+        400,
+      );
+    }
+
+    const parseResult = adapter.parseWebhookEvent({ payload: rawPayload });
+    if (parseResult.isErr()) {
+      console.log(
+        `[WEBHOOK-ROUTE] Unhandled event from ${providerId}: ${parseResult.error.message}`,
+      );
+      return c.json({ success: true, received: true, skipped: true });
+    }
+
+    const normalizedEvent = parseResult.value;
+    console.log(
+      `[WEBHOOK-ROUTE] Event: ${normalizedEvent.type}, provider=${normalizedEvent.provider}, ref=${normalizedEvent.payment?.reference || "n/a"}`,
+    );
+
+    let selectedAccount: any | undefined = managedAccount ?? undefined;
+    const accountToUse = managedAccount
+      ? undefined
+      : secretAccountId
+        ? scopedProviderAccounts.find((a: any) => a.id === secretAccountId)
+        : scopedProviderAccounts.length > 0
+          ? scopedProviderAccounts[0]
+          : undefined;
+
+    if (accountToUse) {
+      const pa = accountToUse as any;
+      const creds = { ...(pa.credentials || {}) };
+      if (typeof creds.secretKey === "string" && creds.secretKey.length > 0) {
+        try {
+          creds.secretKey = (
+            await deps.decrypt(creds.secretKey, c.env.ENCRYPTION_KEY)
+          ).trim();
+        } catch (e) {
+          console.warn(
+            `[WEBHOOK-ROUTE] Failed to decrypt provider secretKey for org=${organizationId}:`,
+            e,
+          );
+          creds.secretKey = creds.secretKey.trim();
+        }
+      }
+      selectedAccount = {
+        ...pa,
+        credentials: creds,
+      };
+    }
+
+    await dispatchEvent(c, {
+      organizationId: org.id,
+      adapter,
+      account: selectedAccount,
+      event: normalizedEvent,
+    });
+
+    return c.json({ success: true, received: true });
+  }
+
+  /**
+   * Shared sandbox endpoint. One URL per provider is registered on the
+   * Billwave-owned test account; the organization is recovered from the
+   * `organization_id` metadata every checkout stamps on the provider object.
+   */
+  async function handleSandboxWebhookRequest(c: any, providerId: string) {
+    if (!isManagedSandboxRuntime(c.env)) {
+      return c.json({ error: "Not found" }, 404);
+    }
+
+    const registry = deps.getProviderRegistry();
+    const adapter = registry.get(providerId);
+    if (!adapter) {
+      return c.json({ error: `Unsupported provider: ${providerId}` }, 400);
+    }
+
+    if (!listManagedSandboxProviderIds(c.env).includes(providerId)) {
+      return c.json(
+        { error: `Sandbox provider '${providerId}' is not managed` },
+        404,
+      );
+    }
+
+    const sigHeader =
+      adapter.signatureHeaderName || `x-${providerId}-signature`;
+    const signature = c.req.header(sigHeader);
+    if (!signature) {
+      return c.json(
+        errorToResponse(new WebhookError({ reason: "missing_signature" })),
+        401,
+      );
+    }
+
+    // Verify against the managed secret before touching any org data. The
+    // org id is only known once the payload is trusted.
+    const probe = getManagedSandboxAccount(c.env, "sandbox", providerId);
+    const secret = probe ? managedSandboxWebhookSecret(probe) : null;
+    if (!secret) {
+      return c.json(
+        { error: `Sandbox provider '${providerId}' has no webhook secret` },
+        404,
+      );
+    }
+
+    const rawBody = await c.req.text();
+    const verifyResult = await adapter.verifyWebhook({
+      signature,
+      payload: rawBody,
+      secret,
+      headers: collectHeaders(c),
+    });
+    if (verifyResult.isErr() || !verifyResult.value) {
+      // Masked context so a wrong/rotated managed secret is diagnosable from
+      // logs alone (Standard-Webhooks providers also need id + timestamp).
+      const reqHeaders = collectHeaders(c);
+      console.error(
+        `[WEBHOOK-SANDBOX] Signature verification FAILED for provider=${providerId}`,
+        {
+          secretPreview: maskSecretForLog(secret),
+          secretSource:
+            typeof (probe?.credentials as Record<string, unknown>)
+              .webhookSecret === "string"
+              ? "webhookSecret"
+              : "secretKey",
+          signatureHeader: sigHeader,
+          signaturePreview: maskSecretForLog(signature),
+          webhookId: reqHeaders["webhook-id"] || null,
+          webhookTimestamp: reqHeaders["webhook-timestamp"] || null,
+          eventType:
+            (() => {
+              try {
+                const body = JSON.parse(rawBody);
+                return body?.type || body?.event || null;
+              } catch {
+                return null;
+              }
+            })(),
+        },
+      );
+      return c.json(
+        errorToResponse(new WebhookError({ reason: "invalid_signature" })),
+        401,
+      );
+    }
+
+    let rawPayload: Record<string, unknown>;
+    try {
+      rawPayload = JSON.parse(rawBody);
+    } catch {
+      return c.json(
+        errorToResponse(new WebhookError({ reason: "parse_failed" })),
+        400,
+      );
+    }
+
+    const parseResult = adapter.parseWebhookEvent({ payload: rawPayload });
+    if (parseResult.isErr()) {
+      console.log(
+        `[WEBHOOK-SANDBOX] Unhandled event from ${providerId}: ${parseResult.error.message}`,
+      );
+      return c.json({ success: true, received: true, skipped: true });
+    }
+
+    const normalizedEvent = parseResult.value;
+    let organizationRef = extractOrganizationRef(normalizedEvent.metadata);
+    let routedBy = "metadata";
+
+    // Refunds, disputes and some provider-initiated subscription events carry
+    // no checkout metadata. The provider customer id is unique on the shared
+    // account, so it identifies the org as long as exactly one org owns it.
+    if (!organizationRef) {
+      const byCustomer = await resolveOrganizationByProviderCustomer(c, {
+        providerId,
+        providerCustomerId: normalizedEvent.customer?.providerCustomerId,
+        email: normalizedEvent.customer?.email,
+      });
+      if (byCustomer) {
+        organizationRef = byCustomer.organizationId;
+        routedBy = byCustomer.matchedBy;
+      }
+    }
+
+    if (!organizationRef) {
+      console.warn(
+        `[WEBHOOK-SANDBOX] Dropping ${normalizedEvent.type} from ${providerId}: no organization_id in metadata and no unique customer match`,
+      );
+      return c.json({
+        success: true,
+        received: true,
+        skipped: true,
+        reason: "unrouted",
+      });
+    }
+
+    const org = await resolveOrganization(c, organizationRef);
+    if (!org) {
+      console.warn(
+        `[WEBHOOK-SANDBOX] Dropping ${normalizedEvent.type} from ${providerId}: organization '${organizationRef}' not found`,
+      );
+      return c.json({
+        success: true,
+        received: true,
+        skipped: true,
+        reason: "organization_not_found",
+      });
+    }
+
+    console.log(
+      `[WEBHOOK-SANDBOX] Event: ${normalizedEvent.type}, provider=${providerId}, org=${org.id}, routedBy=${routedBy}, ref=${normalizedEvent.payment?.reference || "n/a"}`,
+    );
+
+    await dispatchEvent(c, {
+      organizationId: org.id,
+      adapter,
+      account: getManagedSandboxAccount(c.env, org.id, providerId) ?? undefined,
+      event: normalizedEvent,
+    });
+
+    return c.json({ success: true, received: true });
+  }
+
+  /**
+   * Find the single organization whose customer record matches the provider
+   * customer on this event. Ambiguous matches (same email in two orgs on the
+   * shared sandbox account) are refused rather than guessed.
+   */
+  async function resolveOrganizationByProviderCustomer(
+    c: any,
+    params: {
+      providerId: string;
+      providerCustomerId?: string | null;
+      email?: string | null;
+    },
+  ): Promise<{ organizationId: string; matchedBy: string } | null> {
+    const db = c.get("db");
+
+    if (params.providerCustomerId) {
+      const rows = await db.query.customers.findMany({
+        where: and(
+          eq(schema.customers.providerId, params.providerId),
+          eq(schema.customers.providerCustomerId, params.providerCustomerId),
+        ),
+        columns: { organizationId: true },
+      });
+      const orgs = new Set(rows.map((r: any) => r.organizationId));
+      if (orgs.size === 1) {
+        return {
+          organizationId: [...orgs][0] as string,
+          matchedBy: "provider_customer_id",
+        };
+      }
+      if (orgs.size > 1) {
+        console.warn(
+          `[WEBHOOK-SANDBOX] provider customer ${params.providerCustomerId} belongs to ${orgs.size} orgs; refusing to route`,
+        );
+        return null;
+      }
+    }
+
+    const email = params.email?.trim().toLowerCase();
+    if (email) {
+      const rows = await db.query.customers.findMany({
+        where: eq(schema.customers.email, email),
+        columns: { organizationId: true },
+      });
+      const orgs = new Set(rows.map((r: any) => r.organizationId));
+      if (orgs.size === 1) {
+        return { organizationId: [...orgs][0] as string, matchedBy: "email" };
+      }
+      if (orgs.size > 1) {
+        console.warn(
+          `[WEBHOOK-SANDBOX] email ${email} exists in ${orgs.size} orgs; refusing to route`,
+        );
+      }
+    }
+
+    return null;
+  }
+
+  function extractOrganizationRef(
+    metadata: Record<string, unknown> | undefined,
+  ): string | null {
+    if (!metadata) return null;
+    const candidate = metadata.organization_id ?? metadata.organizationId;
+    return typeof candidate === "string" && candidate.trim().length > 0
+      ? candidate.trim()
+      : null;
+  }
+
+  // Registered before the org-addressed routes so `sandbox` is never treated
+  // as an organization id or slug.
+  app.openapi(sandboxWebhookRoute, async (c) => {
+    return handleSandboxWebhookRequest(c, c.req.param("provider"));
+  });
+
+  app.openapi(paystackWebhookRoute, async (c) => {
+    return handleWebhookRequest(c, c.req.param("organizationId"), "paystack");
+  });
+
+  app.openapi(providerWebhookRoute, async (c) => {
+    return handleWebhookRequest(
+      c,
+      c.req.param("organizationId"),
+      c.req.param("provider"),
+    );
+  });
+
+  return app;
+}
+
+export default createWebhookRoutes();

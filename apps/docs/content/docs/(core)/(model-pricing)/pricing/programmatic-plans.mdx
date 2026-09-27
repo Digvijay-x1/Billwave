@@ -1,0 +1,151 @@
+---
+title: Define Plans in Code
+description: Use the SDK catalog to define features and plans as code, then sync to the dashboard
+icon: Code
+---
+
+# Define Plans in Code
+
+Define your features and plans in TypeScript and push them to Billwave with a single command. No dashboard clicks required.
+
+## Prerequisites
+
+- An Billwave organization with an API key
+- `billwave` installed in your project
+
+## 1. Define your features
+
+Create a file (e.g. `src/billing/features.ts`) and define your features using `metered()`, `boolean()`, and `entity()`:
+
+```ts
+import { metered, boolean, entity } from "@digvijay-x1/billwave";
+
+export const apiCalls = metered("api-calls", { name: "API Calls" });
+export const analytics = boolean("analytics", { name: "Analytics Dashboard" });
+export const seats = entity("seats", { name: "Team Seats" });
+```
+
+## 2. Define your plans
+
+Create a config file (e.g. `billwave.config.ts`) that assembles features into plans:
+
+```ts
+import { Billwave, plan } from "@digvijay-x1/billwave";
+import { apiCalls, analytics, seats } from "./src/billing/features";
+
+export default new Billwave({
+  secretKey: process.env.BILLWAVE_SECRET_KEY!,
+  catalog: [
+    plan("starter", {
+      name: "Starter",
+      price: 0,
+      currency: "NGN",
+      interval: "monthly",
+      features: [
+        apiCalls.limit(1000),
+        analytics.off(),
+        seats.limit(3),
+      ],
+    }),
+    plan("pro", {
+      name: "Pro",
+      price: 500000,
+      currency: "NGN",
+      interval: "monthly",
+      features: [
+        apiCalls.limit(50000, { overage: "charge", overagePrice: 100 }),
+        analytics.on(),
+        seats.limit(20),
+      ],
+    }),
+    plan("enterprise", {
+      name: "Enterprise",
+      price: 2000000,
+      currency: "NGN",
+      interval: "monthly",
+      features: [apiCalls.unlimited(), analytics.on(), seats.unlimited()],
+    }),
+  ],
+});
+```
+
+## 3. Sync to the API
+
+### Using the CLI
+
+```bash
+npx @digvijay-x1/billwave-cli sync --config ./billwave.config.ts
+```
+
+### Using `billwave.sync()` in a script
+
+```ts
+import billwave from "./billwave.config";
+
+const result = await billwave.sync();
+console.log(result);
+// { features: { created: [...], updated: [...] }, plans: { ... } }
+```
+
+### As a deploy step
+
+```json
+{
+  "scripts": {
+    "sync": "npx @digvijay-x1/billwave-cli sync",
+    "deploy": "pnpm sync && pnpm build && pnpm start"
+  }
+}
+```
+
+## 4. Use feature handles in your app
+
+Once features are defined, use them directly for access checks and usage tracking:
+
+```ts
+import { apiCalls, analytics } from "./billing/features";
+
+// Check access
+const access = await apiCalls.check("user_123");
+if (!access.allowed) {
+  console.log("Access denied:", access.code);
+}
+
+// Track usage
+await apiCalls.track("user_123", 1);
+
+// Boolean features — no .track()
+const { allowed } = await analytics.check("user_123");
+```
+
+## What sync does
+
+- **Creates** features and plans that don't exist yet
+- **Updates** features and plans that have changed in code
+- **Never deletes** — removing from code doesn't remove from the API
+- **Tags resources** with `source: "sdk"` so the dashboard knows they're code-managed
+- **Idempotent** — running sync multiple times with the same config is safe
+
+## Conflict resolution
+
+Every feature and plan has a `source` field (`"dashboard"` or `"sdk"`). Sync follows a **code-wins** policy for resources it manages:
+
+| Scenario                                    | What happens             |
+| ------------------------------------------- | ------------------------ |
+| Feature exists only in code                 | Created on sync          |
+| Feature exists only in dashboard            | Untouched                |
+| Feature exists in both, code changed        | Code version wins        |
+| Feature removed from code but exists in API | Nothing — resource stays |
+
+The dashboard shows a **"Managed by SDK"** badge for code-managed resources.
+
+## Recommended workflows
+
+**Small teams:** Use the catalog for everything. Define features and plans in code, sync on deploy. Dashboard is read-only for verification.
+
+**Larger teams:** Use the catalog for core features and plans. Let product managers create experimental plans in the dashboard. The two don't interfere.
+
+<Callout type="info">
+  Resources created in the dashboard remain untouched by sync. Code-managed and
+  dashboard-managed resources coexist safely.
+</Callout>

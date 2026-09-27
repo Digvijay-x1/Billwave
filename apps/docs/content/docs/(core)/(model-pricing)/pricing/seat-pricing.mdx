@@ -1,0 +1,249 @@
+---
+title: Entities & seat-based pricing
+description: Model seats, workspaces, and other persistent capacity with non-consumable entity features
+icon: Users
+---
+
+# Entities & seat-based pricing
+
+Billwave supports seat-based and capacity-based products through **entity
+features**.
+
+Use an entity feature when the thing you sell is not "usage consumed" but
+"capacity currently allocated":
+
+- seats
+- workspaces
+- projects
+- managed environments
+
+Entity features are non-consumable. You manage them with `addEntity()` and
+`removeEntity()`, not `track()`.
+
+## How entities work
+
+- define the feature with `entity()`
+- set a limit on the plan with `.limit()`
+- add entities as customers allocate capacity
+- remove entities when capacity should be released
+
+This guide shows a common seat-based setup:
+
+- the plan includes `5` seats
+- each seat also gets `1,000` monthly AI credits
+
+## 1. Define features
+
+```ts
+import { metered, entity, plan, Billwave } from "@digvijay-x1/billwave";
+
+export const seats = entity("seats", { name: "Team Seats" });
+export const aiCredits = metered("ai-credits", { name: "AI Credits" });
+```
+
+## 2. Create the plan
+
+```ts
+export default new Billwave({
+  secretKey: process.env.BILLWAVE_SECRET_KEY!,
+  catalog: [
+    plan("team", {
+      name: "Team",
+      price: 2000,
+      currency: "USD",
+      interval: "monthly",
+      features: [
+        seats.limit(5, { overage: "block" }),
+        aiCredits.limit(1000, { reset: "monthly" }),
+      ],
+    }),
+  ],
+});
+```
+
+## 3. Create the customer
+
+```ts
+// Create or get the organization customer
+const org = await billwave.customer({
+  email: "org@acme.com",
+  name: "Acme Corp",
+});
+```
+
+## 4. Start the subscription
+
+```ts
+await org.attach({
+  product: "team",
+});
+```
+
+## 5. Add a seat
+
+Use `seats.add()` to allocate a seat. Billwave validates the current entity
+count against the feature limit.
+
+```ts
+try {
+  await seats.add("org@acme.com", {
+    entity: "user_123",
+    name: "John Doe",
+    email: "john@acme.com",
+    metadata: { role: "admin" },
+  });
+} catch (err) {
+  if (err.code === "limit_exceeded") {
+    // Show upgrade UI
+    console.log("Seat limit reached - upgrade to add more seats");
+  }
+}
+```
+
+## 6. Track per-seat usage
+
+Use `entity` parameter to scope usage to a specific seat:
+
+```ts
+await billwave.track({
+  customer: "org@acme.com",
+  feature: "ai-credits",
+  entity: "user_123", // Deduct from this seat's quota
+  value: 20,
+});
+```
+
+To check remaining credits for a seat:
+
+```ts
+const credits = await billwave.check({
+  customer: "org@acme.com",
+  feature: "ai-credits",
+  entity: "user_123",
+});
+
+console.log("Credits remaining:", credits.balance);
+```
+
+## 7. List and manage seats
+
+```ts
+const { entities } = await seats.list("org@acme.com");
+
+await seats.remove("org@acme.com", "user_123");
+```
+
+## What removal actually does
+
+Seat removal is **deferred**, not immediate.
+
+When you remove an entity:
+
+- its status becomes `pending_removal`
+- it still counts for billing and limit checks until the end of the current
+  billing period
+- Billwave finalizes removal after renewal
+
+If you add the same entity again before period end, Billwave restores it instead
+of creating a duplicate.
+
+This matters for seat products. A removed seat does **not** instantly free a new
+billable slot mid-cycle.
+
+## Shared pool vs per-entity usage
+
+For a shared credit pool across all seats, omit the `entity` parameter:
+
+```ts
+await billwave.track({
+  customer: "org@acme.com",
+  feature: "shared-credits",
+  value: 100,
+});
+```
+
+With `entity`, usage is scoped per seat. Without it, usage is scoped to the
+customer as a whole.
+
+## Complete example
+
+```ts
+import { Billwave, entity, metered, plan } from "@digvijay-x1/billwave";
+
+const seats = entity("seats", { name: "Team Seats" });
+const aiCredits = metered("ai-credits", { name: "AI Credits" });
+
+const billwave = new Billwave({
+  secretKey: process.env.BILLWAVE_SECRET_KEY!,
+  catalog: [
+    plan("team", {
+      name: "Team",
+      price: 2000,
+      currency: "USD",
+      interval: "monthly",
+      features: [
+        seats.limit(5, { overage: "block" }),
+        aiCredits.limit(1000, { reset: "monthly" }),
+      ],
+    }),
+  ],
+});
+
+async function setupOrg() {
+  const org = await billwave.customer({
+    email: "org@acme.com",
+    name: "Acme Corp",
+  });
+
+  await org.attach({ product: "team" });
+
+  const teamMembers = [
+    { id: "user_1", name: "Alice", email: "alice@acme.com" },
+    { id: "user_2", name: "Bob", email: "bob@acme.com" },
+  ];
+
+  for (const member of teamMembers) {
+    try {
+      await seats.add(org.email, {
+        entity: member.id,
+        name: member.name,
+        email: member.email,
+      });
+    } catch (err) {
+      if (err.code === "limit_exceeded") {
+        console.error(`Seat limit reached for ${member.name}`);
+      }
+    }
+  }
+
+  await aiCredits.track(org.email, 100, { entity: "user_1" });
+
+  const credits = await aiCredits.check(org.email, { entity: "user_1" });
+  console.log(`User 1 has ${credits.balance} credits remaining`);
+
+  const { entities } = await seats.list(org.email);
+  console.log(`${entities.length} seats active`);
+
+  await seats.remove(org.email, "user_1");
+}
+```
+
+## Notes
+
+- Entity IDs are unique per feature.
+- `.add()` enforces the configured limit and returns `limit_exceeded` if adding
+  one more entity would exceed it.
+- You must create the entity before using it in entity-scoped `check()` or
+  `track()`.
+- Removed entities stay billable as `pending_removal` until period end.
+- Metadata is a good place for role, owner, or workspace details.
+- The same customer model works for individuals and organizations. Entities are
+  how you represent nested capacity inside that customer.
+
+## API Reference
+
+- [`entity()`](/sdk/catalog#entityslug-opts) - Define entity features (seats, projects)
+- [`addEntity(), removeEntity(), listEntities()`](/sdk/entities) - Manage
+  entity lifecycle
+- [`check()`](/sdk/check) - Check access with optional `entity`
+- [`track()`](/sdk/track) - Track consumable usage with optional `entity`

@@ -1,0 +1,67 @@
+import { Billwave, metered, boolean, plan } from "@digvijay-x1/billwave";
+
+export const aiCredits = metered("ai-credits", {
+  name: "AI Generation Credits",
+});
+export const premiumModels = boolean("premium-models", {
+  name: "Premium Models",
+});
+
+export const billwave = new Billwave({
+  secretKey: process.env.BILLWAVE_SECRET_KEY!,
+  provider: "paystack",
+
+  catalog: [
+    plan("pro", {
+      name: "Pro",
+      price: 15000,
+      currency: "NGN",
+      interval: "monthly",
+      planGroup: "main",
+      provider: "paystack",
+      features: [
+        aiCredits.limit(5000, {
+          reset: "monthly",
+          overage: "block",
+          overagePrice: 25,
+          billingUnits: 1,
+        }),
+        premiumModels.on(),
+      ],
+    }),
+    plan("pro-plus", {
+      name: "Pro",
+      price: 35000,
+      currency: "NGN",
+      interval: "monthly",
+      planGroup: "main",
+      provider: "paystack",
+      features: [
+        aiCredits.limit(500, {
+          reset: "daily",
+          trialLimit: 200,
+          overage: "block",
+          overagePrice: 25,
+          billingUnits: 1,
+        }),
+        premiumModels.on(),
+      ],
+    }),
+    plan("starter", {
+      name: "Starter",
+      price: 0,
+      currency: "NGN",
+      interval: "monthly",
+      planGroup: "main",
+      autoEnable: true,
+      features: [
+        aiCredits.limit(50, {
+          reset: "monthly",
+          overage: "block",
+          overagePrice: 25,
+          billingUnits: 1,
+        }),
+      ],
+    }),
+  ],
+});

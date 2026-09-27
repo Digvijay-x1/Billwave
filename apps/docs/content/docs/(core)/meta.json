@@ -1,0 +1,13 @@
+{
+  "title": "Docs",
+  "root": true,
+  "pages": [
+    "index",
+    "(get-started)",
+    "(model-pricing)",
+    "(lifecycle)",
+    "(sdk-reference)",
+    "(cli-reference)",
+    "api-reference"
+  ]
+}

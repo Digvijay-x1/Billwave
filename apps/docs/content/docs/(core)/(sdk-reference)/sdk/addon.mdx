@@ -1,0 +1,83 @@
+---
+title: addon()
+description: Purchase add-on credit packs
+icon: Plus
+---
+
+# addon()
+
+Purchase a credit pack to top up a customer's prepaid balance. If the customer has a card on file, the charge happens immediately. Otherwise, a checkout URL is returned.
+
+## Signature
+
+```ts
+await billwave.addon({
+  customer: string,
+  pack: string,
+  quantity?: number,
+  currency?: string,
+  callbackUrl?: string,
+  metadata?: Record<string, unknown>,
+}): Promise<AddonResult>
+```
+
+## Parameters
+
+| Parameter     | Type                     | Required | Description                              |
+| ------------- | ------------------------ | -------- | ---------------------------------------- |
+| `customer`    | `string`                 | Yes      | Your internal user ID                    |
+| `pack`        | `string`                 | Yes      | Credit pack slug or ID                   |
+| `quantity`    | `number`                 | No       | Number of packs to buy (default: 1)      |
+| `currency`    | `string`                 | No       | Optional currency override               |
+| `callbackUrl` | `string`                 | No       | Redirect URL after checkout              |
+| `metadata`    | `Record<string, unknown>` | No      | Custom metadata attached to the purchase |
+
+## Response
+
+```ts
+interface AddonResult {
+  success: boolean;
+  requiresCheckout: boolean;
+  credits?: number;
+  balance?: number;
+  creditSystemId?: string;
+  checkoutUrl?: string;
+  reference?: string;
+  message?: string;
+}
+```
+
+## Examples
+
+### Basic purchase
+
+```ts
+const result = await billwave.addon({
+  customer: "user_123",
+  pack: "500-credits",
+});
+
+if (result.requiresCheckout) {
+  console.log("Redirect to:", result.checkoutUrl);
+} else {
+  console.log("Credits added:", result.credits);
+  console.log("New balance:", result.balance);
+}
+```
+
+### Buy multiple packs
+
+```ts
+const result = await billwave.addon({
+  customer: "user_123",
+  pack: "500-credits",
+  quantity: 3, // 1500 credits
+});
+```
+
+## Notes
+
+- Credit packs must be tied to a **credit system**. Packs without a credit system are rejected.
+- If the customer has a valid payment method on file, `requiresCheckout` is `false` and `credits` plus `balance` are returned immediately.
+- If `requiresCheckout` is `true`, use `checkoutUrl` to redirect the customer and `reference` to correlate the purchase.
+- The provider used for checkout is determined by the credit pack's configured payment provider.

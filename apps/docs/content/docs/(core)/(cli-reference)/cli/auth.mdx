@@ -1,0 +1,51 @@
+---
+title: Authentication
+description: How the CLI authenticates with Billwave
+---
+
+# CLI Authentication
+
+The Billwave CLI uses a secure, browser-based authentication flow to link your terminal session with your Billwave account.
+
+## How it works
+
+1. **Initiate**: When you run `npx @digvijay-x1/billwave-cli connect`, the CLI generates a unique session token.
+2. **Browser Flow**: A browser window opens automatically, asking you to sign in to your Billwave dashboard.
+3. **Approval**: Once signed in, you'll see a request to authorize the CLI.
+4. **Completion**: After approval, the CLI receives **two** environment-scoped keys — one sandbox (`billwave_sk_test_…`) and one live (`billwave_sk_live_…`) — and stores them locally. Commands pick the key that matches `--mode`.
+
+## Credentials Storage
+
+The CLI stores credentials in `~/.billwave/config.json`:
+
+```json
+{
+  "keys": {
+    "sandbox": "billwave_sk_test_…",
+    "live": "billwave_sk_live_…"
+  },
+  "organizationId": "org_…"
+}
+```
+
+You can also create keys in the dashboard under **Settings → API keys**, choosing the environment for each.
+
+## Environment Variables
+
+For CI/CD, where browser-based auth isn't possible, pass the key through the environment. A scoped key selects the mode on its own; set `BILLWAVE_MODE` as well if your key is a legacy `billwave_sk_…` key.
+
+```bash
+export BILLWAVE_SECRET_KEY=billwave_sk_test_...
+npx @digvijay-x1/billwave-cli sync --yes --json
+
+# legacy key
+export BILLWAVE_SECRET_KEY=billwave_sk_...
+export BILLWAVE_MODE=sandbox
+npx @digvijay-x1/billwave-cli sync --yes --json
+```
+
+| Variable               | Purpose                                                               |
+| ---------------------- | --------------------------------------------------------------------- |
+| `BILLWAVE_SECRET_KEY`  | API key (`--key` overrides it)                                        |
+| `BILLWAVE_MODE`        | `sandbox` or `live` (`--mode` overrides it)                           |
+| `BILLWAVE_API_URL`     | Override the API host for the selected mode (self-hosted / local)     |

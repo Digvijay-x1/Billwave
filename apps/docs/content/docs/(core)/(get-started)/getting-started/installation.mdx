@@ -1,0 +1,64 @@
+---
+title: Installation
+description: Install the Billwave SDK
+icon: Package
+---
+
+# Installation
+
+Install the Billwave SDK in your Node.js project. This guide covers SDK setup; provider configuration happens in the dashboard.
+
+## Package Manager
+
+```npm
+npm i @digvijay-x1/billwave
+```
+
+## Configuration
+
+Initialize the SDK with your API key:
+
+```ts
+import { Billwave } from "@digvijay-x1/billwave";
+
+const billwave = new Billwave({
+  secretKey: process.env.BILLWAVE_SECRET_KEY,
+  // Optional: override the API URL (for self-hosted)
+  // apiUrl: "https://api.billwave.example"
+});
+```
+
+in .env
+
+```sh
+BILLWAVE_SECRET_KEY=billwave_sk_your_api_key_here
+```
+
+## TypeScript
+
+The SDK is written in TypeScript and includes full type definitions. No additional `@types/*` packages are needed.
+
+```ts
+import {
+  Billwave,
+  AttachResult,
+  CheckResult,
+  TrackResult,
+} from "@digvijay-x1/billwave";
+
+const billwave = new Billwave({ secretKey: "..." });
+
+// All methods are fully typed
+const result: AttachResult = await billwave.attach({
+  customer: "user_123",
+  product: "pro",
+});
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="attach()" href="/sdk/attach" />
+  <Card title="check()" href="/sdk/check" />
+  <Card title="track()" href="/sdk/track" />
+</Cards>

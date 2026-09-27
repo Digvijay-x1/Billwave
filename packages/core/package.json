@@ -1,0 +1,49 @@
+{
+  "name": "@digvijay-x1/billwave",
+  "version": "0.7.0",
+  "description": "Core SDK for Billwave billing infrastructure",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Digvijay-x1/Billwave",
+    "directory": "packages/core"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "test": "vitest",
+    "lint": "tsc --noEmit -p tsconfig.json"
+  },
+  "keywords": [
+    "billing",
+    "saas",
+    "subscriptions",
+    "usage-based",
+    "metering",
+    "payments"
+  ],
+  "dependencies": {
+    "@digvijay-x1/types": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

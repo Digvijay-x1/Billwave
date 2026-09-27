@@ -1,0 +1,384 @@
+function slugToIdentifier(slug: string, used: Set<string>): string {
+  const parts = slug
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  let id = parts
+    .map((p, i) => {
+      const lower = p.toLowerCase();
+      return i === 0 ? lower : lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join("");
+
+  if (!id) id = "feature";
+  if (/^\d/.test(id)) id = `feature${id}`;
+
+  const reserved = new Set([
+    "break",
+    "case",
+    "catch",
+    "class",
+    "const",
+    "continue",
+    "debugger",
+    "default",
+    "delete",
+    "do",
+    "else",
+    "export",
+    "extends",
+    "finally",
+    "for",
+    "function",
+    "if",
+    "import",
+    "in",
+    "instanceof",
+    "new",
+    "return",
+    "super",
+    "switch",
+    "this",
+    "throw",
+    "try",
+    "typeof",
+    "var",
+    "void",
+    "while",
+    "with",
+    "yield",
+  ]);
+
+  if (reserved.has(id)) id = `${id}Feature`;
+
+  let candidate = id;
+  let counter = 2;
+  while (used.has(candidate)) {
+    candidate = `${id}${counter++}`;
+  }
+  used.add(candidate);
+  return candidate;
+}
+
+export type ConfigFormat = "ts" | "esm";
+
+function normalizeResetForCodegen(
+  reset: string | null | undefined,
+): string | undefined {
+  switch (reset) {
+    case undefined:
+    case null:
+      return undefined;
+    case "hour":
+      return "hourly";
+    case "day":
+      return "daily";
+    case "week":
+      return "weekly";
+    case "month":
+      return "monthly";
+    case "quarter":
+      return "quarterly";
+    case "year":
+    case "annually":
+      return "yearly";
+    default:
+      return reset;
+  }
+}
+
+export function generateConfig(
+  plans: any[],
+  creditSystems: any[] = [],
+  creditPacks: any[] = [],
+  defaultProvider?: string,
+  format: ConfigFormat = "ts",
+): string {
+  const isTs = format === "ts";
+
+  // Build a map of credit systems by slug
+  const creditSystemSlugs = new Set(creditSystems.map((cs) => cs.slug));
+
+  // Collect all features, excluding credit system pseudo-features
+  const featuresBySlug = new Map<
+    string,
+    { slug: string; name?: string; type: string; meterType?: string }
+  >();
+  for (const plan of plans) {
+    for (const f of plan.features || []) {
+      // Skip credit system features - they'll be handled separately
+      if (creditSystemSlugs.has(f.slug)) continue;
+      if (!featuresBySlug.has(f.slug)) {
+        featuresBySlug.set(f.slug, {
+          slug: f.slug,
+          name: f.name,
+          type: f.type || "metered",
+          meterType: f.meterType,
+        });
+      }
+    }
+  }
+
+  // Also collect child features from credit systems
+  for (const cs of creditSystems) {
+    for (const f of cs.features || []) {
+      if (!featuresBySlug.has(f.feature)) {
+        featuresBySlug.set(f.feature, {
+          slug: f.feature,
+          name: f.feature,
+          type: "metered",
+        });
+      }
+    }
+  }
+
+  const usedNames = new Set<string>([
+    "Billwave",
+    "metered",
+    "boolean",
+    "entity",
+    "creditSystem",
+    "creditPack",
+    "plan",
+    "billwave",
+  ]);
+  const featureVars = new Map<string, string>();
+
+  const featureLines: string[] = [];
+  for (const feature of featuresBySlug.values()) {
+    const varName = slugToIdentifier(feature.slug, usedNames);
+    featureVars.set(feature.slug, varName);
+    const nameArg = feature.name
+      ? `, { name: ${JSON.stringify(feature.name)} }`
+      : "";
+
+    const isEntity = feature.meterType === "non_consumable";
+    const builder =
+      feature.type === "boolean" ? "boolean" : isEntity ? "entity" : "metered";
+    const decl = `${builder}(${JSON.stringify(feature.slug)}${nameArg})`;
+
+    featureLines.push(`export const ${varName} = ${decl};`);
+  }
+
+  // Generate credit system definitions
+  const creditSystemLines: string[] = [];
+  const creditSystemVars = new Map<string, string>();
+
+  for (const cs of creditSystems) {
+    const varName = slugToIdentifier(cs.slug, usedNames);
+    creditSystemVars.set(cs.slug, varName);
+
+    const configLines: string[] = [];
+    if (cs.name) configLines.push(`name: ${JSON.stringify(cs.name)}`);
+    if (cs.description)
+      configLines.push(`description: ${JSON.stringify(cs.description)}`);
+
+    const featureEntries = (cs.features || []).map((f: any) => {
+      const childVar = featureVars.get(f.feature) || f.feature;
+      return `${childVar}(${f.creditCost})`;
+    });
+    configLines.push(`features: [${featureEntries.join(", ")}]`);
+
+    const decl = `creditSystem(${JSON.stringify(cs.slug)}, {\n  ${configLines.join(",\n  ")}\n})`;
+
+    creditSystemLines.push(`export const ${varName} = ${decl};`);
+  }
+
+  const planLines: string[] = [];
+  for (const plan of plans) {
+    const configLines: string[] = [];
+    configLines.push(`name: ${JSON.stringify(plan.name)}`);
+    if (plan.description)
+      configLines.push(`description: ${JSON.stringify(plan.description)}`);
+    configLines.push(`price: ${plan.price}`);
+    configLines.push(`currency: ${JSON.stringify(plan.currency)}`);
+    configLines.push(`interval: ${JSON.stringify(plan.interval)}`);
+    if (plan.billingType === "one_time") {
+      configLines.push(`billingType: "one_time"`);
+    }
+    if (plan.planGroup)
+      configLines.push(`planGroup: ${JSON.stringify(plan.planGroup)}`);
+    if (plan.trialDays && plan.trialDays > 0)
+      configLines.push(`trialDays: ${plan.trialDays}`);
+    if (plan.provider)
+      configLines.push(`provider: ${JSON.stringify(plan.provider)}`);
+    if (plan.autoEnable) configLines.push(`autoEnable: true`);
+    if (plan.isAddon) configLines.push(`isAddon: true`);
+
+    const featureEntries: string[] = [];
+    for (const pf of plan.features || []) {
+      // Handle credit system features
+      if (creditSystemSlugs.has(pf.slug)) {
+        const csVar = creditSystemVars.get(pf.slug);
+        if (csVar && pf.enabled) {
+          const opts: string[] = [];
+          const creditReset = normalizeResetForCodegen(
+            pf.resetInterval || pf.reset,
+          );
+          if (creditReset !== undefined) {
+            opts.push(`reset: "${creditReset}"`);
+          }
+          if (pf.overage) opts.push(`overage: "${pf.overage}"`);
+
+          if (opts.length > 0) {
+            featureEntries.push(
+              `${csVar}.credits(${pf.limit ?? 0}, { ${opts.join(", ")} })`,
+            );
+          } else {
+            featureEntries.push(`${csVar}.credits(${pf.limit ?? 0})`);
+          }
+        }
+        continue;
+      }
+
+      const varName = featureVars.get(pf.slug) || pf.slug;
+      const globalFeature = featuresBySlug.get(pf.slug);
+      const featureType = globalFeature?.type || pf.type || "metered";
+
+      if (featureType === "boolean") {
+        featureEntries.push(
+          pf.enabled ? `${varName}.on()` : `${varName}.off()`,
+        );
+        continue;
+      }
+
+      if (pf.enabled === false) {
+        // Preserve config for disabled metered features
+        const config: Record<string, unknown> = { enabled: false };
+        if (pf.limit !== undefined) config.limit = pf.limit;
+        const disabledReset = normalizeResetForCodegen(
+          pf.resetInterval || pf.reset,
+        );
+        if (disabledReset !== undefined) config.reset = disabledReset;
+        if (pf.usageModel) config.usageModel = pf.usageModel;
+        if (pf.pricePerUnit !== undefined)
+          config.pricePerUnit = pf.pricePerUnit;
+        if (pf.ratingModel) config.ratingModel = pf.ratingModel;
+        if (pf.tiers !== undefined) config.tiers = pf.tiers;
+        if (pf.billingUnits !== undefined)
+          config.billingUnits = pf.billingUnits;
+        if (pf.overage) config.overage = pf.overage;
+        if (pf.overagePrice !== undefined)
+          config.overagePrice = pf.overagePrice;
+        if (pf.maxOverageUnits !== undefined)
+          config.maxOverageUnits = pf.maxOverageUnits;
+        if (pf.creditCost !== undefined) config.creditCost = pf.creditCost;
+
+        featureEntries.push(`${varName}.config(${JSON.stringify(config)})`);
+        continue;
+      }
+
+      const isEntityFeature = globalFeature?.meterType === "non_consumable";
+      const config: Record<string, unknown> = {};
+      if (pf.limit !== undefined) config.limit = pf.limit;
+      // Entity features default to reset: "never", so omit reset for them
+      if (!isEntityFeature) {
+        const reset = normalizeResetForCodegen(
+          pf.resetInterval || pf.reset || "monthly",
+        );
+        if (reset !== undefined) config.reset = reset;
+      }
+      if (pf.usageModel) config.usageModel = pf.usageModel;
+      if (pf.pricePerUnit !== undefined) config.pricePerUnit = pf.pricePerUnit;
+      if (pf.ratingModel) config.ratingModel = pf.ratingModel;
+      if (pf.tiers !== undefined) config.tiers = pf.tiers;
+      if (pf.billingUnits !== undefined) config.billingUnits = pf.billingUnits;
+      if (pf.overage) config.overage = pf.overage;
+      if (pf.overagePrice !== undefined) config.overagePrice = pf.overagePrice;
+      if (pf.maxOverageUnits !== undefined)
+        config.maxOverageUnits = pf.maxOverageUnits;
+      if (pf.creditCost !== undefined) config.creditCost = pf.creditCost;
+
+      const configKeys = Object.keys(config);
+      const hasExtras = configKeys.some((k) => k !== "limit");
+      if (config.limit === null && !hasExtras) {
+        featureEntries.push(`${varName}.unlimited()`);
+      } else if (typeof config.limit === "number" && !hasExtras) {
+        featureEntries.push(`${varName}.limit(${config.limit})`);
+      } else if (typeof config.limit === "number") {
+        const { limit, ...rest } = config;
+        featureEntries.push(
+          `${varName}.limit(${limit}, ${JSON.stringify(rest)})`,
+        );
+      } else {
+        featureEntries.push(`${varName}.config(${JSON.stringify(config)})`);
+      }
+    }
+
+    configLines.push(`features: [${featureEntries.join(", ")}]`);
+    planLines.push(
+      `plan(${JSON.stringify(plan.slug)}, {\n      ${configLines.join(",\n      ")}\n    })`,
+    );
+  }
+
+  // Generate credit pack definitions
+  const creditPackLines: string[] = [];
+  for (const pack of creditPacks) {
+    const configLines: string[] = [];
+    configLines.push(`name: ${JSON.stringify(pack.name)}`);
+    if (pack.description)
+      configLines.push(`description: ${JSON.stringify(pack.description)}`);
+    configLines.push(`credits: ${pack.credits}`);
+    configLines.push(`price: ${pack.price}`);
+    configLines.push(`currency: ${JSON.stringify(pack.currency)}`);
+    configLines.push(
+      `creditSystem: ${JSON.stringify(pack.creditSystemId || pack.creditSystem)}`,
+    );
+    if (pack.provider)
+      configLines.push(`provider: ${JSON.stringify(pack.provider)}`);
+    if (pack.metadata)
+      configLines.push(`metadata: ${JSON.stringify(pack.metadata)}`);
+
+    creditPackLines.push(
+      `creditPack(${JSON.stringify(pack.slug)}, {\n      ${configLines.join(",\n      ")}\n    })`,
+    );
+  }
+
+  const hasCreditSystems = creditSystemLines.length > 0;
+  const hasCreditPacks = creditPackLines.length > 0;
+  const hasEntities = Array.from(featuresBySlug.values()).some(
+    (f) => f.meterType === "non_consumable",
+  );
+  const providerLine = defaultProvider
+    ? `  provider: ${JSON.stringify(defaultProvider)},\n`
+    : "";
+
+  const importParts = ["Billwave", "metered", "boolean"];
+  if (hasEntities) importParts.push("entity");
+  importParts.push("creditSystem", "creditPack", "plan");
+
+  const imports = `import { ${importParts.join(", ")} } from "@digvijay-x1/billwave";`;
+
+  const tsCheck = !isTs ? `// @ts-check` : "";
+  const jsDoc = !isTs ? `/** @type {import('@digvijay-x1/billwave').Billwave} */` : "";
+
+  const owoDecl = "export const billwave =";
+  const secretKey = isTs
+    ? "process.env.BILLWAVE_SECRET_KEY!"
+    : "process.env.BILLWAVE_SECRET_KEY";
+
+  const catalogEntries = [...planLines, ...creditPackLines];
+
+  return [
+    tsCheck,
+    imports,
+    ``,
+    ...featureLines,
+    ...(hasCreditSystems ? ["", ...creditSystemLines] : []),
+    ``,
+    jsDoc,
+    `${owoDecl} new Billwave({`,
+    `  // billwave_sk_test_… targets sandbox, billwave_sk_live_… targets live.`,
+    `  // Add mode: "sandbox" | "live" if you use a legacy (unscoped) key.`,
+    `  secretKey: ${secretKey},`,
+    providerLine,
+    `  catalog: [`,
+    `    ${catalogEntries.join(",\n    ")}`,
+    `  ],`,
+    `});`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}

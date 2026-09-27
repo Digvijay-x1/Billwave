@@ -1,0 +1,48 @@
+{
+  "name": "billwave-api",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_OPTIONS=--conditions=development wrangler dev",
+    "deploy": "NODE_OPTIONS=--conditions=development wrangler deploy",
+    "deploy:test": "NODE_OPTIONS=--conditions=development wrangler deploy --env test",
+    "deploy:live": "NODE_OPTIONS=--conditions=development wrangler deploy --env live",
+    "tail": "wrangler tail",
+    "test": "vitest",
+    "test:runtime": "vitest --run test/runtime",
+    "test:runtime:adapters": "vitest --run test/runtime/adapters",
+    "test:runtime:webhooks": "vitest --run test/runtime/webhooks",
+    "test:runtime:workflows": "vitest --run test/runtime/workflows",
+    "db:migrate:local": "wrangler d1 migrations apply billwave --local && wrangler d1 migrations apply billwave-auth --local",
+    "db:migrate:auth": "wrangler d1 migrations apply billwave-auth --remote --env live",
+    "db:migrate:test": "wrangler d1 migrations apply billwave-test --remote --env test",
+    "db:migrate:live": "wrangler d1 migrations apply billwave-live --remote --env live",
+    "db:migrate:remote": "pnpm db:migrate:auth && pnpm db:migrate:test && pnpm db:migrate:live"
+  },
+  "dependencies": {
+    "@better-auth/core": "^1.6.2",
+    "@better-auth/infra": "^0.2.1",
+    "@better-auth/sso": "^1.6.2",
+    "@hono/zod-openapi": "^1.2.3",
+    "@digvijay-x1/adapters": "workspace:*",
+    "@digvijay-x1/analytics": "workspace:*",
+    "@digvijay-x1/db": "workspace:*",
+    "@digvijay-x1/types": "workspace:*",
+    "better-auth": "^1.6.2",
+    "better-auth-cloudflare": "^0.3.0",
+    "better-result": "^2.7.0",
+    "drizzle-orm": "^0.41.0",
+    "hono": "^4.7.4",
+    "@digvijay-x1/billwave": "workspace:*",
+    "resend": "^6.9.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260210.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5",
+    "wrangler": "^4.64.0"
+  }
+}

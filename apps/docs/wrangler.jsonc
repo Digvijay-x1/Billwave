@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "billwave-docs",
+  "compatibility_date": "2026-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+//  "routes": [
+//    {
+//      "pattern": "docs.billwave.example",
+//      "custom_domain": true
+//    }
+//  ]
+}

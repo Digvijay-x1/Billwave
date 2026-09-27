@@ -1,0 +1,49 @@
+import { env } from "$env/dynamic/private";
+import { Billwave, metered, boolean, plan } from "@digvijay-x1/billwave";
+
+export const aiCredits = metered("ai-credits", {
+  name: "AI Generation Credits",
+});
+export const premiumModels = boolean("premium-models", {
+  name: "Premium Models",
+});
+
+export const catalog = [
+  plan("starter", {
+    name: "Starter",
+    price: 0,
+    currency: "NGN",
+    interval: "monthly",
+    planGroup: "main",
+    features: [
+      aiCredits.limit(50, {
+        reset: "monthly",
+        overage: "block",
+        overagePrice: 25,
+        billingUnits: 1,
+      }),
+    ],
+  }),
+  plan("pro", {
+    name: "Pro",
+    price: 15000,
+    currency: "NGN",
+    interval: "monthly",
+    planGroup: "main",
+    features: [
+      aiCredits.limit(5000, {
+        reset: "monthly",
+        overage: "block",
+        overagePrice: 25,
+        billingUnits: 1,
+      }),
+      premiumModels.on(),
+    ],
+  }),
+];
+
+export const billwave = new Billwave({
+  secretKey: env.BILLWAVE_API_KEY || "sk_test_owo",
+  apiUrl: env.BILLWAVE_API_URL || "http://localhost:8787/api/v1",
+  catalog,
+});
