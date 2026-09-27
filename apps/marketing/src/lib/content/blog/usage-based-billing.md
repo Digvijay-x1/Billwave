@@ -6,7 +6,7 @@ readTime: "7 min read"
 category: "Engineering"
 layout: blog
 thumbnail: ""
-author: "yaqeen"
+author: "Digvijay"
 ---
 
 The phrase always sounds simpler than the work.

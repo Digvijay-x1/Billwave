@@ -2,7 +2,7 @@
   import Header from "$lib/components/marketing/Header.svelte";
   import Footer from "$lib/components/marketing/Footer.svelte";
 
-  const calLink = "https://cal.com/yaqeen/30min";
+  const calLink = "https://cal.com/digvijay-rawat/30min";
   const structuredData = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "ContactPage",

@@ -6,7 +6,7 @@ readTime: "7 min read"
 category: "Engineering"
 layout: blog
 thumbnail: ""
-author: "yaqeen"
+author: "Digvijay"
 ---
 
 One of the models we support for usage-based billing is the prepaid balance model. Your plan has features, each feature has a `creditCost`, and the customer has a credit balance. Every usage event costs some credits. When the balance hits zero, the feature stops working.
