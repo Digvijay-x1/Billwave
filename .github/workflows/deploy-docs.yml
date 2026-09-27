@@ -1,7 +1,7 @@
 name: Deploy Docs
 
-# Deploys the docs site (billwave-docs) on every push to main that touches the
-# app, its lockfile, or root workspace config.
+# Deploys the docs site (billwave-docs) on pushes affecting docs or the API
+# reference generated from the API and shared packages.
 #
 # `pnpm install` runs the app's postinstall, which regenerates openapi.json and
 # the fumadocs collections; `vite build` then emits dist/server/wrangler.json
@@ -26,6 +26,8 @@ on:
       - main
     paths:
       - "apps/docs/**"
+      - "apps/api/**"
+      - "packages/**"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "package.json"
