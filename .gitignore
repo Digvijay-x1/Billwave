@@ -15,6 +15,7 @@ chump-audit-progress.md
 .env.local
 .env.*.local
 .dev.vars
+client_secret_*.apps.googleusercontent.com.json
 
 # IDE
 .vscode

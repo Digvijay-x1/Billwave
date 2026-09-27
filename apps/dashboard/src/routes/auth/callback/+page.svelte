@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import { authClient } from "$lib/auth-client";
   import { CircleNotch } from "phosphor-svelte";
   import { onMount } from "svelte";
@@ -14,31 +13,33 @@
   let status = $state<"processing" | "success" | "error">("processing");
   let errorMessage = $state("");
 
-  onMount(() => {
-    // Wait a moment for Better Auth to process the OAuth callback
-    setTimeout(() => {
-      // Get the stored redirect URL
-      const redirectUrl = localStorage.getItem('auth_redirect_after_oauth');
-      
-      // Clear it from storage
-      if (redirectUrl) {
-        localStorage.removeItem('auth_redirect_after_oauth');
-      }
+  onMount(async () => {
+    const providerError = new URLSearchParams(window.location.search).get("error");
+    if (providerError) {
+      status = "error";
+      errorMessage = `Authentication failed: ${providerError.replaceAll("_", " ")}`;
+      return;
+    }
 
-      // Check if we're authenticated
-      const session = authClient.getSession();
-      
-      if (!session) {
+    try {
+      const { data: session, error } = await authClient.getSession();
+      if (error || !session?.user) {
         status = "error";
-        errorMessage = "Authentication failed. Please try again.";
+        errorMessage = error?.message || "Authentication failed. Please try again.";
         return;
       }
 
-      // Redirect to the stored URL or home
+      const savedRedirect = localStorage.getItem("auth_redirect_after_oauth");
+      localStorage.removeItem("auth_redirect_after_oauth");
+      const targetUrl = savedRedirect?.startsWith("/") && !savedRedirect.startsWith("//")
+        ? savedRedirect
+        : "/";
       status = "success";
-      const targetUrl = redirectUrl || "/";
-      window.location.href = targetUrl;
-    }, 500);
+      window.location.assign(targetUrl);
+    } catch (err) {
+      status = "error";
+      errorMessage = err instanceof Error ? err.message : "Authentication failed. Please try again.";
+    }
   });
 </script>
 
