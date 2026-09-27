@@ -157,6 +157,7 @@
         "ANALYTICS_DATASET": "billwave_api_test",
         "USE_EVENTS_PIPELINE": "false",
         "BETTER_AUTH_URL": "https://billwave-api-test.hackerearthx1.workers.dev",
+        "DASHBOARD_URL": "https://billwave-dashboard.hackerearthx1.workers.dev",
       },
 
 //      "routes": [
@@ -260,6 +261,7 @@
         "ANALYTICS_DATASET": "billwave_api_live",
         "USE_EVENTS_PIPELINE": "false",
         "BETTER_AUTH_URL": "https://billwave-api-live.hackerearthx1.workers.dev",
+        "DASHBOARD_URL": "https://billwave-dashboard.hackerearthx1.workers.dev",
       },
 //      "routes": [
 //        {
