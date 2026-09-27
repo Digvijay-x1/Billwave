@@ -74,7 +74,7 @@
         <p
           class="font-[Caveat,cursive,sans-serif] text-4xl md:text-5xl text-text-primary mt-4 mb-2 tracking-wide opacity-80"
         >
-          XXXXXX from Billwave
+          Digvijay from Billwave
         </p>
       </div>
 

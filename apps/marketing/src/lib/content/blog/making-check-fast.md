@@ -6,7 +6,7 @@ readTime: "5 min read"
 category: "Engineering"
 layout: blog
 thumbnail: ""
-author: "XXXXXX"
+author: "Digvijay"
 ---
 
 A simple principle i've been sticking with for a while is a quote from steve jobs - where he said: "start with the customer experience, then walk up the technology" i don't know if i got that right (could google it though);

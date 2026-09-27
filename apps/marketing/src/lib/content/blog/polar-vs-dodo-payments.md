@@ -6,7 +6,7 @@ readTime: "8 min read"
 category: "Engineering"
 layout: blog
 thumbnail: ""
-author: "XXXXXX"
+author: "Digvijay"
 ---
 
 If you are comparing Polar and Dodo Payments, you are already asking a smart question.

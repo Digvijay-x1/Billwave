@@ -150,22 +150,3 @@ pnpm --filter billwave-dashboard dev
 pnpm --filter billwave-marketing dev
 ```
 
-## Credits
-
-This entire project might not directly be a fork of [autumnpricing](https://github.com/useautumn/autumn), but has heavily taken concepts from their implementation. even UX of the dashboard.
-
-Thanks Autumn!
-
-[autumpricing](https://useautumn.com)
-
-[autumpricing github](https://github.com/useautumn/autumn)
-
-[autumpricing dashboard](https://app.useautumn.com)
-
-[autumpricing docs](https://docs.useautumn.com)
-
-[billwave blog](https://billwave.example)
-
-[billwave dashboard](https://app.billwave.example)
-
-[billwave docs](https://docs.billwave.example)

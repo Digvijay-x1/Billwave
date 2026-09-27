@@ -6,7 +6,7 @@ readTime: "6 min read"
 category: "Product & Strategy"
 layout: blog
 thumbnail: ""
-author: "XXXXXX"
+author: "Digvijay"
 ---
 
 I do not know if "reset-window pricing" is the name that will stick.
