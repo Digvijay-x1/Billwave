@@ -408,17 +408,6 @@ export function AIChatSidebar() {
               </button>
             </div>
           </form>
-          <div className="mt-2 px-1 text-xs text-[var(--color-fd-muted-foreground)]">
-            Powered by{" "}
-            <a
-              href="https://github.com/XXXXXXXXXX1/cull"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--color-fd-foreground)] hover:text-[var(--color-fd-primary)] hover:underline"
-            >
-              Cull
-            </a>
-          </div>
         </div>
       </div>
     </>
