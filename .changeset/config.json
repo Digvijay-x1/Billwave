@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.2/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "Digvijay-x1/Billwave" }
+  ],
+  "commit": false,
+  "fixed": [],
+  "linked": [["@digvijay-x1/types", "@digvijay-x1/billwave", "@digvijay-x1/billwave-cli"]],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "billwave-api",
+    "billwave-dashboard",
+    "billwave-docs",
+    "billwave-marketing",
+    "demo-app",
+    "@digvijay-x1/db",
+    "@digvijay-x1/adapters",
+    "@digvijay-x1/svelte",
+    "@digvijay-x1/analytics"
+  ]
+}

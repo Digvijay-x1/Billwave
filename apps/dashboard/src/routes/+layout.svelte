@@ -1,0 +1,81 @@
+<script lang="ts">
+  import "../app.css";
+  import { Toaster } from "svelte-sonner";
+
+  let { children } = $props();
+</script>
+
+<svelte:head>
+  <title>Billwave</title>
+</svelte:head>
+
+<div class="fixed inset-0 z-1000 pointer-events-none bg-noise"></div>
+
+<Toaster
+  position="bottom-right"
+  toastOptions={{
+    style: `
+      --normal-bg: var(--color-bg-card);
+      --normal-text: var(--color-text-primary);
+      --normal-border: var(--color-border);
+      --success-bg: var(--color-success-bg);
+      --success-text: var(--color-success);
+      --success-border: var(--color-success);
+      --error-bg: var(--color-error-bg);
+      --error-text: var(--color-error);
+      --error-border: var(--color-error);
+      --warning-bg: var(--color-warning-bg);
+      --warning-text: var(--color-warning);
+      --warning-border: var(--color-warning);
+      --info-bg: var(--color-info-bg);
+      --info-text: var(--color-info);
+      --info-border: var(--color-info);
+    `,
+    class: "billwave-toast",
+  }}
+/>
+
+<div class="antialiased min-h-screen">
+  {@render children()}
+</div>
+
+<style>
+  :global(.billwave-toast) {
+    border-radius: var(--radius-sm) !important;
+    box-shadow: 3px 3px 0 0 var(--color-border) !important;
+    font-family: var(--font-sans) !important;
+    font-size: 13px !important;
+    padding: 12px 16px !important;
+  }
+
+  :global(.billwave-toast[data-sonner-toast][data-type="success"]) {
+    box-shadow: 3px 3px 0 0 var(--color-border) !important;
+  }
+
+  :global(.billwave-toast[data-sonner-toast][data-type="error"]) {
+    box-shadow: 3px 3px 0 0 var(--color-border) !important;
+  }
+
+  :global(.billwave-toast[data-sonner-toast][data-type="warning"]) {
+    box-shadow: 3px 3px 0 0 var(--color-border) !important;
+  }
+
+  :global(.billwave-toast[data-sonner-toast][data-type="info"]) {
+    box-shadow: 3px 3px 0 0 var(--color-border) !important;
+  }
+
+  :global(.billwave-toast [data-icon]) {
+    margin-right: 10px !important;
+  }
+
+  :global(.billwave-toast [data-title]) {
+    font-weight: 600 !important;
+    font-size: 13px !important;
+  }
+
+  :global(.billwave-toast [data-description]) {
+    font-size: 12px !important;
+    color: var(--color-text-dim) !important;
+    margin-top: 2px !important;
+  }
+</style>

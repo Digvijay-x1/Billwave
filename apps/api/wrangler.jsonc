@@ -1,0 +1,387 @@
+{
+  "name": "billwave-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-01-31",
+  "compatibility_flags": ["nodejs_compat", "durable_object_alarms"],
+
+  // D1 Databases (local dev — both point to same DB)
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "billwave",
+      "database_id": "5aef4391-fc1c-4f7c-8ade-09a172d24e19",
+      "migrations_dir": "../../packages/db/migrations",
+    },
+    {
+      "binding": "DB_AUTH",
+      "database_name": "billwave-auth",
+      "database_id": "5b3f2376-34a5-46fe-bd67-74f026525847",
+      "migrations_dir": "../../packages/db/migrations",
+    },
+  ],
+
+  // KV Namespaces (local dev — shared)
+  "kv_namespaces": [
+    {
+      "binding": "API_KEYS",
+      "id": "a06424d8259b4700802803fcfb4ec8f1",
+    },
+    {
+      "binding": "CACHE",
+      "id": "a06424d8259b4700802803fcfb4ec8f1",
+    },
+    {
+      "binding": "CACHE_SHARED",
+      "id": "a06424d8259b4700802803fcfb4ec8f1",
+    },
+  ],
+
+  // Cloudflare Workers Analytics Engine (legacy — will be replaced by Pipelines)
+  "analytics_engine_datasets": [
+    {
+      "binding": "ANALYTICS",
+      "dataset": "billwave_api_dev",
+    },
+  ],
+
+  // Cloudflare Data Platform — Pipelines
+  // Bound for future use; Analytics Engine remains the default until
+  // USE_EVENTS_PIPELINE is explicitly enabled.
+//  "pipelines": [
+//    {
+//      "binding": "EVENTS_PIPELINE",
+//      "pipeline": "REPLACE_ME_PIPELINE_ID",
+//    },
+//  ],
+
+  // Durable Objects for usage metering
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "USAGE_METER",
+        "class_name": "UsageMeterDO",
+      },
+      {
+        "name": "USAGE_LEDGER",
+        "class_name": "UsageLedgerDO",
+      },
+    ],
+  },
+
+  // Cloudflare Workflows for durable multi-step processes
+  "workflows": [
+    {
+      "name": "trial-end-workflow",
+      "binding": "TRIAL_END_WORKFLOW",
+      "class_name": "TrialEndWorkflow",
+    },
+    {
+      "name": "downgrade-workflow",
+      "binding": "DOWNGRADE_WORKFLOW",
+      "class_name": "DowngradeWorkflow",
+    },
+    {
+      "name": "plan-upgrade-workflow",
+      "binding": "PLAN_UPGRADE_WORKFLOW",
+      "class_name": "PlanUpgradeWorkflow",
+    },
+    {
+      "name": "renewal-setup-workflow",
+      "binding": "RENEWAL_SETUP_WORKFLOW",
+      "class_name": "RenewalSetupRetryWorkflow",
+    },
+    {
+      "name": "overage-billing-workflow",
+      "binding": "OVERAGE_BILLING_WORKFLOW",
+      "class_name": "OverageBillingWorkflow",
+    },
+  ],
+
+  // Queue for dispatching overage billing workflows at scale
+  "queues": {
+    "producers": [
+      {
+        "binding": "OVERAGE_BILLING_QUEUE",
+        "queue": "overage-billing",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "overage-billing",
+        "max_batch_size": 10,
+        "max_retries": 3,
+        "dead_letter_queue": "overage-billing-dlq",
+      },
+    ],
+  },
+
+  // Cron triggers for periodic overage billing
+  "triggers": {
+    "crons": ["0 0 * * *"],
+  },
+
+  // Migrations for Durable Objects
+  // NOTE: Workers Free plan only supports the SQLite storage backend.
+  // UsageMeterDO is therefore declared with new_sqlite_classes (it uses the
+  // KV-style storage.get/put + alarm APIs, which the SQLite backend supports).
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["UsageMeterDO"],
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["UsageLedgerDO"],
+    },
+  ],
+
+  // Environment variables (local dev)
+  "vars": {
+    "ENVIRONMENT": "development",
+    "ANALYTICS_DATASET": "billwave_api_dev",
+    "USE_EVENTS_PIPELINE": "false",
+    "BETTER_AUTH_URL": "http://localhost:8787/api/auth",
+  },
+
+  // ==========================================================================
+  // Deploy: wrangler deploy --env test
+  // Each environment gets its own worker name, D1, KV, and DOs.
+  // Set secrets per-env: wrangler secret put BETTER_AUTH_SECRET --env test
+  // ==========================================================================
+  "env": {
+    "test": {
+      "name": "billwave-api-test",
+      "observability": { "enabled": true },
+      "vars": {
+        "ENVIRONMENT": "test",
+        "ANALYTICS_DATASET": "billwave_api_test",
+        "USE_EVENTS_PIPELINE": "false",
+        "BETTER_AUTH_URL": "https://billwave-api-test.hackerearthx1.workers.dev",
+      },
+
+//      "routes": [
+//        {
+//          "pattern": "sandbox.billwave.example",
+//          "custom_domain": true,
+//        },
+//      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "billwave-test",
+          "database_id": "64334d95-f7b8-436f-b91c-b93cdd4270d0",
+          "migrations_dir": "../../packages/db/migrations",
+        },
+        {
+          "binding": "DB_AUTH",
+          "database_name": "billwave-auth",
+          "database_id": "5b3f2376-34a5-46fe-bd67-74f026525847",
+          "migrations_dir": "../../packages/db/migrations",
+        },
+      ],
+      "kv_namespaces": [
+        { "binding": "API_KEYS", "id": "a927de09c65f4e98b464eb303f6c52ab" },
+        { "binding": "CACHE", "id": "a927de09c65f4e98b464eb303f6c52ab" },
+        { "binding": "CACHE_SHARED", "id": "a06424d8259b4700802803fcfb4ec8f1" },
+      ],
+      "analytics_engine_datasets": [
+        { "binding": "ANALYTICS", "dataset": "billwave_api_test" },
+      ],
+
+      "queues": {
+        "producers": [
+          {
+            "binding": "OVERAGE_BILLING_QUEUE",
+            "queue": "overage-billing-test",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "overage-billing-test",
+            "max_batch_size": 10,
+            "max_retries": 3,
+            "dead_letter_queue": "overage-billing-test-dlq",
+          },
+        ],
+      },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "USAGE_METER",
+            "class_name": "UsageMeterDO",
+          },
+          {
+            "name": "USAGE_LEDGER",
+            "class_name": "UsageLedgerDO",
+          },
+        ],
+      },
+      "workflows": [
+        {
+          "name": "trial-end-workflow",
+          "binding": "TRIAL_END_WORKFLOW",
+          "class_name": "TrialEndWorkflow",
+        },
+        {
+          "name": "downgrade-workflow",
+          "binding": "DOWNGRADE_WORKFLOW",
+          "class_name": "DowngradeWorkflow",
+        },
+        {
+          "name": "plan-upgrade-workflow",
+          "binding": "PLAN_UPGRADE_WORKFLOW",
+          "class_name": "PlanUpgradeWorkflow",
+        },
+        {
+          "name": "renewal-setup-workflow",
+          "binding": "RENEWAL_SETUP_WORKFLOW",
+          "class_name": "RenewalSetupRetryWorkflow",
+        },
+        {
+          "name": "overage-billing-workflow",
+          "binding": "OVERAGE_BILLING_WORKFLOW",
+          "class_name": "OverageBillingWorkflow",
+        },
+      ],
+//      "pipelines": [
+//        {
+//          "binding": "EVENTS_PIPELINE",
+//          "pipeline": "REPLACE_ME_PIPELINE_ID",
+//        },
+//      ],
+      // "pipelines": [
+      //   { "binding": "EVENTS_PIPELINE", "pipeline": "billwave-events-test" }
+      // ],
+    },
+    "live": {
+      "name": "billwave-api-live",
+      "vars": {
+        "ENVIRONMENT": "live",
+        "ANALYTICS_DATASET": "billwave_api_live",
+        "USE_EVENTS_PIPELINE": "false",
+        "BETTER_AUTH_URL": "https://billwave-api-live.hackerearthx1.workers.dev",
+      },
+//      "routes": [
+//        {
+//          "pattern": "api.billwave.example",
+//          "custom_domain": true,
+//        },
+//      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "billwave-live",
+          "database_id": "61c7a190-a5a2-4f55-aefe-bea776306a2d",
+          "migrations_dir": "../../packages/db/migrations",
+        },
+        {
+          "binding": "DB_AUTH",
+          "database_name": "billwave-auth",
+          "database_id": "5b3f2376-34a5-46fe-bd67-74f026525847",
+          "migrations_dir": "../../packages/db/migrations",
+        },
+      ],
+      "kv_namespaces": [
+        { "binding": "API_KEYS", "id": "09ba8a5fb08443f59c845df3456798e3" },
+        { "binding": "CACHE", "id": "09ba8a5fb08443f59c845df3456798e3" },
+        { "binding": "CACHE_SHARED", "id": "a06424d8259b4700802803fcfb4ec8f1" },
+      ],
+      "analytics_engine_datasets": [
+        { "binding": "ANALYTICS", "dataset": "billwave_api_live" },
+      ],
+//      "pipelines": [
+//        {
+//          "binding": "EVENTS_PIPELINE",
+//          "pipeline": "REPLACE_ME_PIPELINE_ID",
+//        },
+//      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "OVERAGE_BILLING_QUEUE",
+            "queue": "overage-billing-live",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "overage-billing-live",
+            "max_batch_size": 10,
+            "max_retries": 3,
+            "dead_letter_queue": "overage-billing-live-dlq",
+          },
+        ],
+      },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "USAGE_METER",
+            "class_name": "UsageMeterDO",
+          },
+          {
+            "name": "USAGE_LEDGER",
+            "class_name": "UsageLedgerDO",
+          },
+        ],
+      },
+      "workflows": [
+        {
+          "name": "trial-end-workflow",
+          "binding": "TRIAL_END_WORKFLOW",
+          "class_name": "TrialEndWorkflow",
+        },
+        {
+          "name": "downgrade-workflow",
+          "binding": "DOWNGRADE_WORKFLOW",
+          "class_name": "DowngradeWorkflow",
+        },
+        {
+          "name": "plan-upgrade-workflow",
+          "binding": "PLAN_UPGRADE_WORKFLOW",
+          "class_name": "PlanUpgradeWorkflow",
+        },
+        {
+          "name": "renewal-setup-workflow",
+          "binding": "RENEWAL_SETUP_WORKFLOW",
+          "class_name": "RenewalSetupRetryWorkflow",
+        },
+        {
+          "name": "overage-billing-workflow",
+          "binding": "OVERAGE_BILLING_WORKFLOW",
+          "class_name": "OverageBillingWorkflow",
+        },
+      ],
+      // "pipelines": [
+      //   { "binding": "EVENTS_PIPELINE", "pipeline": "billwave-events-live" }
+      // ],
+    },
+  },
+
+  "observability": {
+    "enabled": true,
+  },
+
+  "send_email": [
+    {
+      "name": "SEND_EMAIL",
+    },
+  ],
+
+  // Secrets (set via: wrangler secret put <NAME> [--env test|live])
+  // ENCRYPTION_KEY
+  // BETTER_AUTH_SECRET
+  // GOOGLE_CLIENT_ID
+  // GOOGLE_CLIENT_SECRET
+  // CF_ACCOUNT_ID
+  // CF_ANALYTICS_READ_TOKEN (Analytics:Read)
+  // R2_SQL_TOKEN (R2 SQL queries — needed when EVENTS_PIPELINE is enabled)
+  // R2_WAREHOUSE (R2 Data Catalog warehouse ID)
+  // RESEND_API_KEY
+  // MANAGED_SANDBOX_<PROVIDER_ID> (--env test ONLY) — Billwave-owned test credentials,
+  //   one secret per provider so each rotates independently:
+  //     MANAGED_SANDBOX_PAYSTACK      sk_test_…                (bare key is enough)
+  //     MANAGED_SANDBOX_STRIPE        {"secretKey":"sk_test_…","publishableKey":"pk_test_…","webhookSecret":"whsec_…"}
+  //     MANAGED_SANDBOX_DODOPAYMENTS  {"secretKey":"…","webhookSecret":"…"}
+  //     MANAGED_SANDBOX_BACHS         {"secretKey":"sk_sandbox_…","webhookSecret":"…"}
+  //   See src/lib/managed-sandbox.ts. Register https://sandbox.billwave.example/webhooks/sandbox/<provider>
+  //   as the webhook URL on each of those provider test accounts.
+}

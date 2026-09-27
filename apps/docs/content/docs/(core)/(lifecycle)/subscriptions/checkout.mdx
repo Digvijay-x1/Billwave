@@ -1,0 +1,114 @@
+---
+title: Set up checkout
+description: Start a subscription or purchase flow using attach()
+icon: ShoppingCart
+---
+
+# How to set up checkout
+
+This guide shows how to use `attach()` to start a subscription checkout, handle the redirect, and confirm the result.
+
+## Start a checkout session
+
+Call `attach()` with a customer identifier and a plan slug. If payment is required, you get back a `checkoutUrl`.
+
+```ts
+import { Billwave } from "@digvijay-x1/billwave";
+
+const billwave = new Billwave({ secretKey: process.env.BILLWAVE_API_KEY });
+
+const result = await billwave.attach({
+  customer: "user_123",
+  product: "pro-monthly",
+  customerData: { email: "user@example.com" },
+});
+
+if (result.checkoutUrl) {
+  // Redirect the user to the provider checkout page
+  console.log(result.checkoutUrl);
+} else {
+  // Already subscribed — no checkout needed
+  console.log("Subscription active:", result.subscription);
+}
+```
+
+## Customer identifiers
+
+The `customer` field accepts either your internal user ID or the customer's email:
+
+```ts
+// Using your user ID (recommended)
+await billwave.attach({ customer: "user_123", product: "pro" });
+
+// Using email (also works)
+await billwave.attach({ customer: "jane@example.com", product: "pro" });
+```
+
+Billwave resolves customers in this order:
+
+1. **Customer ID** — Billwave's internal ID
+2. **External ID** — your user ID (set via `customerData`)
+3. **Email** — case-insensitive match
+
+If the customer doesn't exist yet and you're using a non-email identifier, include `customerData.email` so Billwave can create the customer record:
+
+```ts
+await billwave.attach({
+  customer: "user_123",
+  product: "pro",
+  customerData: { email: "jane@example.com" },
+});
+```
+
+Once the email is set on a customer, you can use either the user ID or the email in any subsequent SDK call.
+
+## Auto-create the customer
+
+If the customer does not exist yet, pass `customerData` to create them inline:
+
+```ts
+const result = await billwave.attach({
+  customer: "your_user_id",
+  product: "starter",
+  customerData: {
+    email: "new-user@example.com",
+    name: "Jane Doe",
+  },
+});
+```
+
+Billwave creates the customer record before initiating the checkout. If the customer already exists, `customerData` is lazily updated incase it changes.
+
+## Handle the callback
+
+After the customer completes payment, the provider redirects them back to your app. The webhook fires in the background and Billwave activates the subscription.
+
+Redirect to the `checkoutUrl` and show a success page when the user returns.
+
+## When no checkout is required
+
+`attach()` skips the checkout and returns an active subscription when:
+
+- The customer is already on the requested plan
+- The plan is free (price = 0)
+- A lateral switch within the same plan group has no price difference
+
+
+## Attach metadata
+
+Custom metadata travels through the checkout and arrives in webhook payloads:
+
+```ts
+const result = await billwave.attach({
+  customer: "user_123",
+  product: "pro-monthly",
+  metadata: {
+   ...
+  },
+});
+```
+
+<Callout type="warning">
+  Checkout only activates after the provider confirms payment via webhook.
+  Make sure you have completed [Webhook Setup](/getting-started/webhook-setup).
+</Callout>

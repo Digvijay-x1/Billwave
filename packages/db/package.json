@@ -1,0 +1,46 @@
+{
+  "name": "@digvijay-x1/db",
+  "version": "0.1.0",
+  "description": "Database schema and utilities for Billwave",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "development": "./src/schema/index.ts",
+      "import": "./dist/schema/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts src/schema/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts src/schema/index.ts --format esm --dts --watch",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply billwave --local",
+    "db:migrate:prod": "wrangler d1 migrations apply billwave --remote",
+    "db:studio": "drizzle-kit studio"
+  },
+  "keywords": [
+    "billwave",
+    "database",
+    "drizzle",
+    "d1"
+  ],
+  "dependencies": {
+    "drizzle-orm": "^0.41.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250214.0",
+    "drizzle-kit": "^0.30.4",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.3",
+    "wrangler": "^4.62.0"
+  }
+}
