@@ -1,0 +1,77 @@
+name: Deploy Docs
+
+# Deploys the docs site (billwave-docs) on every push to main that touches the
+# app, its lockfile, or root workspace config.
+#
+# `pnpm install` runs the app's postinstall, which regenerates openapi.json and
+# the fumadocs collections; `vite build` then emits dist/server/wrangler.json
+# (via @cloudflare/vite-plugin) plus the .wrangler/deploy redirect that
+# `wrangler deploy` follows.
+#
+# Required repository secrets:
+#   CLOUDFLARE_API_TOKEN   - token with Account > Workers Scripts:Edit,
+#                            Account > Workers KV Storage:Edit (bindings),
+#                            Account > Account Settings:Read, and
+#                            Zone > Workers Routes:Edit + Zone:Read for the
+#                            docs.billwave.digvijayrawat.me custom domain
+#   CLOUDFLARE_ACCOUNT_ID  - af46550f8a21eee798310f618356c5f1
+#
+# Note: use exactly one deploy mechanism per worker. If this worker is ever
+# connected to Cloudflare Workers Builds, remove this workflow (or disconnect
+# the Git integration) so pushes do not deploy it twice.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/docs/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".github/workflows/deploy-docs.yml"
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  deploy:
+    name: Deploy billwave-docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Cloudflare credentials
+        run: |
+          if [ -z "${CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::error::Repository secret CLOUDFLARE_API_TOKEN is not set, so this deploy cannot run."
+            echo "Create a token at https://dash.cloudflare.com/profile/api-tokens with:"
+            echo "  Account > Workers Scripts:Edit, Workers KV Storage:Edit, Account Settings:Read"
+            echo "  Zone    > Workers Routes:Edit, Zone:Read"
+            echo "Then run:"
+            echo "  gh secret set CLOUDFLARE_API_TOKEN --repo ${{ github.repository }}"
+            echo "  gh secret set CLOUDFLARE_ACCOUNT_ID --repo ${{ github.repository }} --body af46550f8a21eee798310f618356c5f1"
+            exit 1
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build docs
+        run: pnpm --filter billwave-docs build
+
+      - name: Deploy to Cloudflare
+        run: pnpm --filter billwave-docs exec wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
