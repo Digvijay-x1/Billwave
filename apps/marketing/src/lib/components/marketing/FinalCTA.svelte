@@ -26,7 +26,7 @@
       </h2>
 
       <div class="mt-10 flex flex-wrap items-center gap-3">
-        <a href="https://app.billwave.example" class="btn btn-primary btn-lg">
+        <a href="https://app.billwave.digvijayrawat.me" class="btn btn-primary btn-lg">
           Start free
           <ArrowRight size={14} weight="bold" />
         </a>

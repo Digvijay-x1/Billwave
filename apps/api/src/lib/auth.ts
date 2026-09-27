@@ -139,6 +139,7 @@ export function auth(env: Env) {
       "https://app.billwave.example",
       "https://billwave-dashboard.hackerearthx1.workers.dev",
       "https://billwave.digvijayrawat.me",
+      "https://app.billwave.digvijayrawat.me",
     ],
 
     advanced: {

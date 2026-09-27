@@ -32,7 +32,7 @@
         >Blog</a
       >
       <a
-        href="https://docs.billwave.example"
+        href="https://docs.billwave.digvijayrawat.me"
         class="hidden transition-colors hover:text-text-primary sm:inline"
         >Docs</a
       >
@@ -58,7 +58,7 @@
         Discord
       </a>
 
-      <a href="https://app.billwave.example" class="btn btn-primary">Dashboard</a>
+      <a href="https://app.billwave.digvijayrawat.me" class="btn btn-primary">Dashboard</a>
     </nav>
   </div>
 </header>

@@ -200,4 +200,4 @@ That is how you keep shipping without rewriting billing every time the business 
 
 ---
 
-**Building with Polar or Dodo already?** Start in the [Billwave dashboard](https://app.billwave.example), connect your provider, run `npx @digvijay-x1/billwave-cli init`, and keep subscriptions, feature gating, and usage metering on one billing layer instead of scattering them across provider-specific code.
+**Building with Polar or Dodo already?** Start in the [Billwave dashboard](https://app.billwave.digvijayrawat.me), connect your provider, run `npx @digvijay-x1/billwave-cli init`, and keep subscriptions, feature gating, and usage metering on one billing layer instead of scattering them across provider-specific code.

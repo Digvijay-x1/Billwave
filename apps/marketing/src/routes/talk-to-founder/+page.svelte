@@ -9,11 +9,11 @@
     name: "Talk to Founder",
     description:
       "Book a call with the Billwave founder to discuss your billing architecture.",
-    url: "https://billwave.example/talk-to-founder",
+    url: "https://billwave.digvijayrawat.me/talk-to-founder",
     mainEntity: {
       "@type": "Organization",
       name: "Billwave",
-      url: "https://billwave.example",
+      url: "https://billwave.digvijayrawat.me",
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "Founder",
@@ -28,26 +28,26 @@
     name="description"
     content="Book a call with the Billwave founder to discuss your billing architecture."
   />
-  <link rel="canonical" href="https://billwave.example/talk-to-founder" />
+  <link rel="canonical" href="https://billwave.digvijayrawat.me/talk-to-founder" />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://billwave.example/talk-to-founder" />
+  <meta property="og:url" content="https://billwave.digvijayrawat.me/talk-to-founder" />
   <meta property="og:title" content="Talk to Founder — Billwave" />
   <meta
     property="og:description"
     content="Book a call with the Billwave founder to discuss your billing architecture."
   />
-  <meta property="og:image" content="https://billwave.example/og.jpg" />
+  <meta property="og:image" content="https://billwave.digvijayrawat.me/og.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@billwave" />
-  <meta name="twitter:url" content="https://billwave.example/talk-to-founder" />
+  <meta name="twitter:url" content="https://billwave.digvijayrawat.me/talk-to-founder" />
   <meta name="twitter:title" content="Talk to Founder — Billwave" />
   <meta
     name="twitter:description"
     content="Book a call with the Billwave founder to discuss your billing architecture."
   />
-  <meta name="twitter:image" content="https://billwave.example/og.jpg" />
+  <meta name="twitter:image" content="https://billwave.digvijayrawat.me/og.jpg" />
   {@html `<script type="application/ld+json">${structuredData}</script>`}
 </svelte:head>
 

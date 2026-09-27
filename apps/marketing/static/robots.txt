@@ -2,4 +2,4 @@
 User-agent: *
 Disallow:
 
-Sitemap: https://billwave.example/sitemap.xml
+Sitemap: https://billwave.digvijayrawat.me/sitemap.xml

@@ -80,7 +80,7 @@
         </button>
       {/each}
     </div>
-    <a href="https://docs.billwave.example" class="btn btn-secondary hidden sm:inline-flex">
+    <a href="https://docs.billwave.digvijayrawat.me" class="btn btn-secondary hidden sm:inline-flex">
       Read the docs
       <ArrowRight size={12} weight="bold" />
     </a>

@@ -17,7 +17,7 @@
 
   // Dynamic OG generator using Cloudinary
   function getOgImage(title?: string) {
-    if (!title) return "https://billwave.example/og.jpg";
+    if (!title) return "https://billwave.digvijayrawat.me/og.jpg";
     const cloudName = "dtrqaqezs";
     const baseImageId = "og-plain_xvn4jj";
     const encodedTitle = encodeURIComponent(encodeURIComponent(title));
@@ -42,7 +42,7 @@
         name: "Billwave",
         logo: {
           "@type": "ImageObject",
-          url: "https://billwave.example/logo.svg",
+          url: "https://billwave.digvijayrawat.me/logo.svg",
         },
       },
     }).replace(/</g, "\\u003c"),
@@ -52,9 +52,9 @@
 <svelte:head>
   <title>{data.metadata?.title || "Blog"} — Billwave</title>
   <meta name="description" content={data.metadata?.excerpt || ""} />
-  <link rel="canonical" href={`https://billwave.example/blog/${data.slug}`} />
+  <link rel="canonical" href={`https://billwave.digvijayrawat.me/blog/${data.slug}`} />
   <meta property="og:type" content="article" />
-  <meta property="og:url" content={`https://billwave.example/blog/${data.slug}`} />
+  <meta property="og:url" content={`https://billwave.digvijayrawat.me/blog/${data.slug}`} />
   <meta
     property="og:title"
     content={`${data.metadata?.title || "Blog"} — Billwave`}
@@ -68,7 +68,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@billwave" />
   <meta name="twitter:creator" content="@billwave" />
-  <meta name="twitter:url" content={`https://billwave.example/blog/${data.slug}`} />
+  <meta name="twitter:url" content={`https://billwave.digvijayrawat.me/blog/${data.slug}`} />
   <meta
     name="twitter:title"
     content={`${data.metadata?.title || "Blog"} — Billwave`}

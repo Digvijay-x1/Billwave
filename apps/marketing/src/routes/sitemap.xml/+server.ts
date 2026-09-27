@@ -26,13 +26,13 @@ export const GET: RequestHandler = async () => {
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://billwave.example/</loc>
+    <loc>https://billwave.digvijayrawat.me/</loc>
     <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://billwave.example/blog</loc>
+    <loc>https://billwave.digvijayrawat.me/blog</loc>
     <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -41,7 +41,7 @@ export const GET: RequestHandler = async () => {
     .map(
       (entry) => `
   <url>
-    <loc>https://billwave.example/blog/${entry.slug}</loc>${
+    <loc>https://billwave.digvijayrawat.me/blog/${entry.slug}</loc>${
       entry.lastmod
         ? `
     <lastmod>${entry.lastmod}</lastmod>`
@@ -53,7 +53,7 @@ export const GET: RequestHandler = async () => {
     )
     .join("")}
   <url>
-    <loc>https://billwave.example/pricing-templates</loc>
+    <loc>https://billwave.digvijayrawat.me/pricing-templates</loc>
     <lastmod>${PRICING_TEMPLATES_LAST_VERIFIED_AT}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -62,7 +62,7 @@ export const GET: RequestHandler = async () => {
     .map(
       (slug) => `
   <url>
-    <loc>https://billwave.example/pricing-templates/${slug}</loc>
+    <loc>https://billwave.digvijayrawat.me/pricing-templates/${slug}</loc>
     <lastmod>${PRICING_TEMPLATES_LAST_VERIFIED_AT}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

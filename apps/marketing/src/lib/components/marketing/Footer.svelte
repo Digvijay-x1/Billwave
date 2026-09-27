@@ -6,8 +6,8 @@
     {
       title: "Product",
       links: [
-        { label: "Dashboard", href: "https://app.billwave.example" },
-        { label: "Documentation", href: "https://docs.billwave.example" },
+        { label: "Dashboard", href: "https://app.billwave.digvijayrawat.me" },
+        { label: "Documentation", href: "https://docs.billwave.digvijayrawat.me" },
         { label: "Pricing templates", href: "/pricing-templates" },
         { label: "Talk to the founder", href: "/talk-to-founder" },
       ],
@@ -24,10 +24,10 @@
     {
       title: "Providers",
       links: [
-        { label: "Paystack", href: "https://docs.billwave.example" },
-        { label: "Stripe", href: "https://docs.billwave.example" },
-        { label: "Dodo Payments", href: "https://docs.billwave.example" },
-        { label: "Bachs", href: "https://docs.billwave.example" },
+        { label: "Paystack", href: "https://docs.billwave.digvijayrawat.me" },
+        { label: "Stripe", href: "https://docs.billwave.digvijayrawat.me" },
+        { label: "Dodo Payments", href: "https://docs.billwave.digvijayrawat.me" },
+        { label: "Bachs", href: "https://docs.billwave.digvijayrawat.me" },
       ],
     },
   ];

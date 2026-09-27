@@ -145,7 +145,7 @@ That changes the user experience quite a lot.
 
 That difference affects support, retention, and how fair the plan feels.
 
-In **[Billwave](https://billwave.example)**, reset intervals are part of the feature config itself:
+In **[Billwave](https://billwave.digvijayrawat.me)**, reset intervals are part of the feature config itself:
 
 ```ts
 const apiCalls = metered("api_calls", { name: "API Calls" });

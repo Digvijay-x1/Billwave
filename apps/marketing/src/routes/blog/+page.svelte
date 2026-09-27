@@ -52,26 +52,26 @@
     name="description"
     content="Thoughts on billing, subscriptions, and building for AI SaaS."
   />
-  <link rel="canonical" href="https://billwave.example/blog" />
+  <link rel="canonical" href="https://billwave.digvijayrawat.me/blog" />
   <meta property="og:type" content="blog" />
-  <meta property="og:url" content="https://billwave.example/blog" />
+  <meta property="og:url" content="https://billwave.digvijayrawat.me/blog" />
   <meta property="og:title" content="Blog — Billwave" />
   <meta
     property="og:description"
     content="Thoughts on billing, subscriptions, and building for AI SaaS."
   />
-  <meta property="og:image" content="https://billwave.example/og.jpg" />
+  <meta property="og:image" content="https://billwave.digvijayrawat.me/og.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@billwave" />
-  <meta name="twitter:url" content="https://billwave.example/blog" />
+  <meta name="twitter:url" content="https://billwave.digvijayrawat.me/blog" />
   <meta name="twitter:title" content="Blog — Billwave" />
   <meta
     name="twitter:description"
     content="Thoughts on billing, subscriptions, and building for AI SaaS."
   />
-  <meta name="twitter:image" content="https://billwave.example/og.jpg" />
+  <meta name="twitter:image" content="https://billwave.digvijayrawat.me/og.jpg" />
 </svelte:head>
 
 <div class="min-h-screen bg-bg-primary text-text-primary font-sans">
