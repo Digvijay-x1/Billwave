@@ -89,7 +89,7 @@
           Start free
         </a>
         <a href="/talk-to-founder" class="btn btn-secondary btn-lg !px-5 !py-2.5 !text-base">
-          <img src="/images/abdul.jpg" alt="Digvijay, founder of Billwave" class="h-5 w-5 rounded-full object-cover" loading="lazy" />
+          <img src="/images/digvijay.jpg" alt="Digvijay, founder of Billwave" class="h-5 w-5 rounded-full object-cover" loading="lazy" />
           Talk to the founder
         </a>
       </div>
