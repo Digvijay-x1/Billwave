@@ -71,6 +71,8 @@ jobs:
 
       - name: Build docs
         run: pnpm --filter billwave-docs build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Deploy to Cloudflare
         run: pnpm --filter billwave-docs exec wrangler deploy
