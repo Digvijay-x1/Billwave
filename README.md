@@ -1,14 +1,24 @@
-# Billwave
+<div align="center">
 
-> Billing engine for AI SaaS.
+# 🌊 Billwave
 
-\> Yes, the infra is built entirely on cloudflare stack. heavy use of Durable Objects and Workflows.
+---
 
-\> Yes, self hosting is pretty much easy and would run perfectly with free workers plan.
+## Billing infrastructure for AI SaaS
 
-\> yes u can use /check as middleware, and maybe a smol cache on ur end. (the endpoint is average 175ms response time)
+Build subscriptions, meter usage, manage credits, and gate features with a developer-friendly billing engine powered by Cloudflare.
 
-\> No, tests are not 100% of core data paths yet.
+<p>
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-SDK-3178C6?logo=typescript&logoColor=white" />
+  <img alt="Cloudflare Workers" src="https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white" />
+  <img alt="SvelteKit" src="https://img.shields.io/badge/SvelteKit-Dashboard-FF3E00?logo=svelte&logoColor=white" />
+  <a href="https://www.npmjs.com/package/@digvijay-x1/billwave"><img alt="npm package" src="https://img.shields.io/npm/v/@digvijay-x1/billwave?label=npm&logo=npm" /></a>
+  <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/License-Apache%202.0-blue" /></a>
+</p>
+
+**[Explore the docs](https://docs.billwave.digvijayrawat.me)** · **[Get started](#quick-start)** · **[Report a bug](https://github.com/digvijay-x1/billwave/issues)**
+
+</div>
 
 ## What is Billwave?
 
@@ -149,4 +159,3 @@ pnpm docs:dev
 pnpm --filter billwave-dashboard dev
 pnpm --filter billwave-marketing dev
 ```
-
