@@ -48,13 +48,13 @@
           If you're curious but not sure how Billwave would fit your product,
           reach out. We are happy to help think through the setup with you on
           <a
-            href="https://discord.gg/jQ3TyEn6WR"
+            href="https://discord.gg/9YGpHeBX2"
             class="link font-medium"
             target="_blank"
             rel="noreferrer">Discord</a
           >,
           <a
-            href="https://twitter.com/billwave"
+            href="https://x.com/DIGVIJAY__RAWAT"
             class="link font-medium"
             target="_blank"
             rel="noreferrer">Twitter</a

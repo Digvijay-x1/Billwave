@@ -34,14 +34,14 @@ resend.emails
               Feel free to join our Discord community if you want to hang out or ask questions.
             </p>
             <p>
-              <a href="https://discord.gg/JMXr4EKmtf" style="color:#c07515;text-decoration:underline;">
+              <a href="https://discord.gg/9YGpHeBX2" style="color:#c07515;text-decoration:underline;">
                 Join Discord
               </a>
             </p>
           </div>
       </div>
   `,
-    text: "Hey,\n\nThanks for joining Billwave beta!\n\nGet started: https://app.billwave.example/join/9aaae255-9979-45b1-b2f4-ccbc2596565a\n\nFeel free to join our Discord community if you want to hang out or ask questions:\nhttps://discord.gg/JMXr4EKmtf",
+    text: "Hey,\n\nThanks for joining Billwave beta!\n\nGet started: https://app.billwave.example/join/9aaae255-9979-45b1-b2f4-ccbc2596565a\n\nFeel free to join our Discord community if you want to hang out or ask questions:\nhttps://discord.gg/9YGpHeBX2",
   })
   .then(({ data, error }) => {
     if (error) {

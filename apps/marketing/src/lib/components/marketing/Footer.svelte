@@ -17,7 +17,7 @@
       links: [
         { label: "Blog", href: "/blog" },
         { label: "GitHub", href: "https://github.com/Digvijay-x1/Billwave" },
-        { label: "Discord", href: "https://discord.gg/jQ3TyEn6WR" },
+        { label: "Discord", href: "https://discord.gg/9YGpHeBX2" },
         { label: "Changelog", href: "https://github.com/Digvijay-x1/Billwave/blob/main/CHANGELOG.md" },
       ],
     },
@@ -54,7 +54,7 @@
             <GithubLogo size={18} weight="duotone" />
           </a>
           <a
-            href="https://discord.gg/jQ3TyEn6WR"
+            href="https://discord.gg/9YGpHeBX2"
             class="transition-colors hover:text-text-primary"
             target="_blank"
             rel="noopener noreferrer"
@@ -63,7 +63,7 @@
             <DiscordLogo size={18} weight="duotone" />
           </a>
           <a
-            href="https://twitter.com/billwave"
+            href="https://x.com/DIGVIJAY__RAWAT"
             class="transition-colors hover:text-text-primary"
             target="_blank"
             rel="noopener noreferrer"

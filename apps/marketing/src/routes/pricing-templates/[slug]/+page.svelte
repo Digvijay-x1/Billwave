@@ -98,7 +98,7 @@
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@billwave" />
+  <meta name="twitter:site" content="@DIGVIJAY__RAWAT" />
   <meta
     name="twitter:title"
     content={`${template.title} Template | Billwave`}
@@ -299,7 +299,7 @@
         </div>
         <div class="flex flex-wrap justify-center gap-3">
           <a
-            href="https://discord.gg/jQ3TyEn6WR"
+            href="https://discord.gg/9YGpHeBX2"
             class="btn btn-secondary gap-2"
             target="_blank"
             rel="noopener noreferrer"

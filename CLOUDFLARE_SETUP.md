@@ -136,7 +136,8 @@ CPU per invocation, D1's 50 queries per invocation and 500 MB per database, and
   (`apps/marketing/static/og.png`, `og.jpg`, `og-plain.png`,
   `apps/dashboard/static/og.png`, `apps/docs/public/og.png`,
   `apps/docs/public/images/og.jpg`). Re-export them with Billwave branding.
-- Discord invite links (`discord.gg/…`) point at the previous community.
+- Discord invite links point at the Billwave community
+  (`https://discord.gg/9YGpHeBX2`).
 - `apps/docs/src/routes/api/assistant/stream.ts` calls
   `https://cull.avdorr12345.workers.dev`, and the docs sidebar links to
   `github.com/Abdulmumin1/cull` ("Powered by Cull") — both belong to the previous

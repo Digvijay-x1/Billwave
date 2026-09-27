@@ -135,4 +135,4 @@ Reserve → meter says no → refund. Credits never lost on a denied request, an
 
 we're still in beta, and i'd rather find these now than after someone's production invoice depends on it. if you're building usage-based credits too and you've run into this (or solved it differently — i know some folks do the ledger-with-events approach instead of mutable balances), i would genuinely love to compare notes.
 
-Would love to know your ideas and opinions on this. Join our discord.. https://discord.gg/jQ3TyEn6WR
+Would love to know your ideas and opinions on this. Join our discord.. https://discord.gg/9YGpHeBX2
