@@ -129,7 +129,8 @@ CPU per invocation, D1's 50 queries per invocation and 500 MB per database, and
 
 ## 8. Configuration notes
 
-- Discord invite links (`discord.gg/…`) point at the previous community.
+- Discord invite links point at the Billwave community
+  (`https://discord.gg/9YGpHeBX2`).
 - `apps/docs/src/routes/api/assistant/stream.ts` calls
   `https://cull.avdorr12345.workers.dev`, and the docs sidebar links to
   `github.com/XXXXXXXXXX1/cull` ("Powered by Cull") — both belong to the previous

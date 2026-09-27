@@ -40,7 +40,7 @@
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@billwave" />
+  <meta name="twitter:site" content="@DIGVIJAY__RAWAT" />
   <meta name="twitter:url" content="https://billwave.digvijayrawat.me/talk-to-founder" />
   <meta name="twitter:title" content="Talk to Founder — Billwave" />
   <meta

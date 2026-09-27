@@ -49,7 +49,7 @@
         GitHub
       </a>
       <a
-        href="https://discord.gg/jQ3TyEn6WR"
+        href="https://discord.gg/9YGpHeBX2"
         class="hidden items-center gap-1.5 transition-colors hover:text-text-primary sm:flex"
         target="_blank"
         rel="noopener noreferrer"

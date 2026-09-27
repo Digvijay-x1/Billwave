@@ -66,8 +66,8 @@
   <meta property="article:published_time" content={data.metadata?.date} />
   <meta property="article:author" content="Billwave Team" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@billwave" />
-  <meta name="twitter:creator" content="@billwave" />
+  <meta name="twitter:site" content="@DIGVIJAY__RAWAT" />
+  <meta name="twitter:creator" content="@DIGVIJAY__RAWAT" />
   <meta name="twitter:url" content={`https://billwave.digvijayrawat.me/blog/${data.slug}`} />
   <meta
     name="twitter:title"
