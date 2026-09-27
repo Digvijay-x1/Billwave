@@ -21,6 +21,7 @@ on:
       - main
     paths:
       - "apps/marketing/**"
+      - "packages/**"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "package.json"
