@@ -1,22 +1,20 @@
 # Billwave on your own Cloudflare
 
-This repo was rebranded from `owostack` to **Billwave** and published under the
-`@digvijay-x1` npm scope. Everything that pointed at the previous owner's
-Cloudflare account, domain and npm packages has been replaced with a placeholder
-or a scoped name. This file is the checklist to stand it up in **your** account.
+Billwave is published under the `@digvijay-x1` npm scope. This checklist covers
+setting it up in your Cloudflare account.
 
 ## 1. What is already done
 
 | Area | State |
 | --- | --- |
-| Brand strings | `owostack`/`Owostack`/`OWOSTACK` → `billwave`/`Billwave`/`BILLWAVE` (docs, marketing, dashboard, API, READMEs) |
+| Brand strings | Billwave across docs, marketing, dashboard, API, and READMEs |
 | npm packages | `@digvijay-x1/billwave`, `@digvijay-x1/billwave-cli`, `@digvijay-x1/types` (plus private `@digvijay-x1/{db,adapters,analytics,svelte}`) |
 | SDK surface | `import { Billwave } from "@digvijay-x1/billwave"`; `BillwaveError`; client instance `billwave` |
 | CLI | bins `billwave` + `bw`; config file `billwave.config.{ts,js,mjs,mts,cts}`; credentials in `~/.billwave/config.json` |
 | Env vars | `BILLWAVE_SECRET_KEY`, `BILLWAVE_MODE`, `BILLWAVE_API_URL`, `BILLWAVE_API_TEST_URL`, `BILLWAVE_API_LIVE_URL` |
 | API keys | new prefix `billwave_sk_{test,live}_<48 hex>` |
 | Cloudflare worker/resource **names** | `billwave-api`, `billwave-api-test`, `billwave-api-live`, `billwave-dashboard`, `billwave-docs`, `billwave-marketing`, D1 `billwave`/`billwave-test`/`billwave-live`/`billwave-auth` |
-| Domain | every `*.owostack.com` URL is now the placeholder `*.billwave.example` (172 occurrences) |
+| Domain | `*.billwave.example` placeholders are ready to replace with your domain |
 | Changelogs | package changelogs reset; `.changeset/billwave-rebrand.md` documents the rename |
 
 ## 2. What you must supply
@@ -89,9 +87,8 @@ pnpm version-packages                       # consumes .changeset/billwave-rebra
 pnpm release                                # builds + `changeset publish`
 ```
 
-`owostack`, `owosk` and `@owostack/types` on npm belong to someone else and are
-**not** used by this repo any more. For CI publishing, either set an `NPM_TOKEN`
-secret or configure npm Trusted Publishing for `Digvijay-x1/Billwave`
+For CI publishing, either set an `NPM_TOKEN` secret or configure npm Trusted
+Publishing for `Digvijay-x1/Billwave`
 (workflow `release.yml`, environment `release`).
 
 ## 7. Plan requirements and cost
@@ -138,9 +135,7 @@ CPU per invocation, D1's 50 queries per invocation and 500 MB per database, and
   `apps/docs/public/images/og.jpg`). Re-export them with Billwave branding.
 - Discord invite links point at the Billwave community
   (`https://discord.gg/9YGpHeBX2`).
-- `apps/docs/src/routes/api/assistant/stream.ts` calls
-  `https://cull.avdorr12345.workers.dev`, and the docs sidebar links to
-  `github.com/Abdulmumin1/cull` ("Powered by Cull") — both belong to the previous
-  owner's project.
+- `apps/docs/src/routes/api/assistant/stream.ts` uses a separately hosted
+  assistant endpoint; configure a deployment you control before enabling it.
 - `apps/api/send-invite.cjs` contains hardcoded join links and the old sender
   address.
