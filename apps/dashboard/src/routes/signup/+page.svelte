@@ -36,12 +36,16 @@
     try {
       if (redirectUrl && redirectUrl !== "/") {
         localStorage.setItem("auth_redirect_after_oauth", redirectUrl);
+      } else {
+        localStorage.removeItem("auth_redirect_after_oauth");
       }
 
-      await signIn.social({
+      const { error: authError } = await signIn.social({
         provider,
         callbackURL: `${page.url.origin}/auth/callback`,
+        errorCallbackURL: `${page.url.origin}/auth/callback`,
       });
+      if (authError) throw new Error(authError.message);
     } catch (err: any) {
       error = err.message || `Failed to continue with ${provider}`;
       isOAuthLoading = null;
