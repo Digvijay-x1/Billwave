@@ -46,6 +46,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build API workspace dependencies
+        run: |
+          pnpm --filter @digvijay-x1/types build
+          pnpm --filter @digvijay-x1/db build
+          pnpm --filter @digvijay-x1/adapters build
+          pnpm --filter @digvijay-x1/analytics build
+          pnpm --filter @digvijay-x1/billwave build
+
       - name: Deploy test API
         run: pnpm --filter billwave-api deploy:test
         env:
@@ -67,6 +75,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build API workspace dependencies
+        run: |
+          pnpm --filter @digvijay-x1/types build
+          pnpm --filter @digvijay-x1/db build
+          pnpm --filter @digvijay-x1/adapters build
+          pnpm --filter @digvijay-x1/analytics build
+          pnpm --filter @digvijay-x1/billwave build
 
       - name: Deploy live API
         run: pnpm --filter billwave-api deploy:live
