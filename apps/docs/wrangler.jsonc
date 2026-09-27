@@ -3,11 +3,12 @@
   "name": "billwave-docs",
   "compatibility_date": "2026-01-01",
   "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
   "main": "@tanstack/react-start/server-entry",
-//  "routes": [
-//    {
-//      "pattern": "docs.billwave.example",
-//      "custom_domain": true
-//    }
-//  ]
+  "routes": [
+    {
+      "pattern": "docs.billwave.digvijayrawat.me",
+      "custom_domain": true
+    }
+  ]
 }
