@@ -1,5 +1,11 @@
 # @digvijay-x1/types
 
+## 0.8.1
+
+### Patch Changes
+
+- [`392c404`](https://github.com/Digvijay-x1/Billwave/commit/392c404173cad8bfc4b25b0005cab98ea32a3e75) Thanks [@Digvijay-x1](https://github.com/Digvijay-x1)! - Correct the 0.8.0 package changelog entries.
+
 ## 0.8.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@digvijay-x1/billwave",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Core SDK for Billwave billing infrastructure",
   "license": "Apache-2.0",
   "repository": {
