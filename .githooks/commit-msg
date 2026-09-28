@@ -1,0 +1,35 @@
+#!/bin/sh
+# Billwave commit gate: every commit must carry a "Signed-off-by" trailer.
+#
+# Enable once per clone (the root "prepare" script does it on `pnpm install`):
+#     git config core.hooksPath .githooks
+#
+# Create commits with the trailer:
+#     git commit -s -m "feat: ..."
+#     git merge --signoff <branch>
+#     git revert --signoff <commit>
+#
+# Deliberate exceptions only (history imports, vendor drops):
+#     git commit --no-verify ...
+
+set -e
+msg_file="$1"
+
+if ! grep -qE '^Signed-off-by: [^<>]+ <[^<>]+>[[:space:]]*$' "$msg_file"; then
+	cat >&2 <<'MSG'
+refusing to create a commit without a sign-off.
+
+This repository requires every commit to be signed off (DCO style).
+Re-run the commit with -s:
+
+    git commit -s -m "..."
+    git merge --signoff <branch>
+    git revert --signoff <commit>
+
+Add the "Signed-off-by: Your Name <you@example.com>" trailer by hand if
+you prefer, or bypass this gate with --no-verify for import-only commits.
+MSG
+	exit 1
+fi
+
+exit 0

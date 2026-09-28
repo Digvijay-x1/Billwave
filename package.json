@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "description": "Billing infrastructure for AI SaaS - 3 API calls, zero webhooks",
   "scripts": {
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "dev": "turbo dev",
     "build": "turbo build",
     "test": "turbo test",
