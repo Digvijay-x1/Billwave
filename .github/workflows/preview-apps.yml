@@ -4,7 +4,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
     paths:
-      - "apps/dashboard/**"
       - "apps/marketing/**"
       - "apps/docs/**"
       - "packages/**"
@@ -48,18 +47,12 @@ jobs:
           : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN repository secret is required}"
           : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID repository secret is required}"
 
-          # The dashboard bundles these URLs into client code. Keep both modes on the sandbox API.
-          PUBLIC_API_URL_TEST=https://sandbox-api.billwave.digvijayrawat.me \
-          PUBLIC_API_URL_LIVE=https://sandbox-api.billwave.digvijayrawat.me \
-          VITE_API_URL_TEST=https://sandbox-api.billwave.digvijayrawat.me \
-          VITE_API_URL_LIVE=https://sandbox-api.billwave.digvijayrawat.me \
-            pnpm --filter billwave-dashboard build
           pnpm --filter billwave-marketing build
           NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter billwave-docs build
 
-          for app in dashboard marketing docs; do
+          for app in marketing docs; do
             output="$(cd "apps/$app" && ./node_modules/.bin/wrangler preview --name "$PREVIEW_NAME" --json)"
-            if ! url="$(printf '%s' "$output" | jq -er '.preview.urls[0]')"; then
+            if ! url="$(printf '%s\n' "$output" | sed -n '/^{/,$p' | jq -er '.preview.urls[0]')"; then
               printf 'Could not read %s preview URL from Wrangler output:\n%s\n' "$app" "$output" >&2
               exit 1
             fi
@@ -72,7 +65,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          DASHBOARD_URL: ${{ steps.previews.outputs.dashboard_url }}
           MARKETING_URL: ${{ steps.previews.outputs.marketing_url }}
           DOCS_URL: ${{ steps.previews.outputs.docs_url }}
         run: |
@@ -81,11 +73,10 @@ jobs:
           <!-- billwave-cloudflare-previews -->
           Cloudflare previews for this PR:
 
-          - [Dashboard]($DASHBOARD_URL)
           - [Marketing]($MARKETING_URL)
           - [Docs]($DOCS_URL)
 
-          The dashboard preview uses the sandbox API in both modes.
+          Cloudflare's existing dashboard integration posts its preview link separately.
           EOF
           comment_id="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate \
             --jq '.[] | select(.body | contains("<!-- billwave-cloudflare-previews -->")) | .id' | head -n 1)"
@@ -113,6 +104,6 @@ jobs:
           PREVIEW_NAME: pr-${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          for app in dashboard marketing docs; do
+          for app in marketing docs; do
             (cd "apps/$app" && ./node_modules/.bin/wrangler preview delete --name "$PREVIEW_NAME" --skip-confirmation)
           done
