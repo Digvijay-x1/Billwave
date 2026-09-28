@@ -1,5 +1,5 @@
 <div align="center">
-  <h1><img src="apps/dashboard/static/logo.svg" alt="" width="40" /> Billwave</h1>
+  <h1><img src="apps/dashboard/static/logo.svg" alt="" width="40" height="40" align="absmiddle" /> Billwave</h1>
 
   <hr />
 
