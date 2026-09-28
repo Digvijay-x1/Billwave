@@ -1,0 +1,26 @@
+#!/bin/sh
+# Check the cryptographic signature of each commit being pushed.
+# Enable with `git config core.hooksPath .githooks` (also run by pnpm install).
+
+set -eu
+
+remote_name=$1
+zero=0000000000000000000000000000000000000000
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue
+
+  if [ "$remote_sha" = "$zero" ]; then
+    commits=$(git rev-list "$local_sha" --not --remotes="$remote_name")
+  else
+    commits=$(git rev-list "$remote_sha..$local_sha")
+  fi
+
+  for commit in $commits; do
+    if ! git verify-commit "$commit" >/dev/null 2>&1; then
+      printf 'Refusing to push %s: commit %s has no valid trusted signature.\n' "$local_ref" "$commit" >&2
+      printf 'Configure Git commit signing, then sign this commit and try again.\n' >&2
+      exit 1
+    fi
+  done
+done

@@ -1,27 +1,25 @@
 <div align="center">
-  <h1>
-    <img src="apps/dashboard/static/logo.svg" alt="" width="40" style="vertical-align: middle;" />
-    Billwave
-  </h1>
+  <h1><img src="apps/dashboard/static/logo.svg" alt="" width="40" /> Billwave</h1>
+
+  <hr />
+
+  <h2>Billing infrastructure for AI SaaS</h2>
+
+  <p>Build subscriptions, meter usage, manage credits, and gate features with a developer-friendly billing engine powered by Cloudflare.</p>
+
+  <p>
+    <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-SDK-3178C6?logo=typescript&logoColor=white" />
+    <img alt="Cloudflare Workers" src="https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white" />
+    <img alt="SvelteKit" src="https://img.shields.io/badge/SvelteKit-Dashboard-FF3E00?logo=svelte&logoColor=white" />
+    <a href="https://www.npmjs.com/package/@digvijay-x1/billwave"><img alt="npm package" src="https://img.shields.io/npm/v/@digvijay-x1/billwave?label=npm&logo=npm" /></a>
+    <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/License-Apache%202.0-blue" /></a>
+  </p>
+
+  <p><strong><a href="https://docs.billwave.digvijayrawat.me">Explore the docs</a> · <a href="#quick-start">Get started</a> · <a href="https://github.com/digvijay-x1/billwave/issues">Report a bug</a></strong></p>
+
 </div>
 
 ---
-
-## Billing infrastructure for AI SaaS
-
-Build subscriptions, meter usage, manage credits, and gate features with a developer-friendly billing engine powered by Cloudflare.
-
-<p>
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-SDK-3178C6?logo=typescript&logoColor=white" />
-  <img alt="Cloudflare Workers" src="https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white" />
-  <img alt="SvelteKit" src="https://img.shields.io/badge/SvelteKit-Dashboard-FF3E00?logo=svelte&logoColor=white" />
-  <a href="https://www.npmjs.com/package/@digvijay-x1/billwave"><img alt="npm package" src="https://img.shields.io/npm/v/@digvijay-x1/billwave?label=npm&logo=npm" /></a>
-  <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/License-Apache%202.0-blue" /></a>
-</p>
-
-**[Explore the docs](https://docs.billwave.digvijayrawat.me)** · **[Get started](#quick-start)** · **[Report a bug](https://github.com/digvijay-x1/billwave/issues)**
-
-</div>
 
 ## What is Billwave?
 
