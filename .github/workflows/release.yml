@@ -45,6 +45,7 @@ jobs:
         with:
           version: pnpm version-packages
           publish: pnpm release
+          commitMode: github-api
           title: "chore: version packages"
           commit: "chore: version packages"
         env:
