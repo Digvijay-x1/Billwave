@@ -22,6 +22,15 @@
     "PUBLIC_API_URL_TEST": "https://sandbox-api.billwave.digvijayrawat.me",
     "PUBLIC_API_URL_LIVE": "https://api.billwave.digvijayrawat.me",
   },
+  "previews": {
+    "vars": {
+      "VITE_DOCS_URL": "https://docs.billwave.digvijayrawat.me",
+      "VITE_API_URL_TEST": "https://sandbox-api.billwave.digvijayrawat.me",
+      "VITE_API_URL_LIVE": "https://sandbox-api.billwave.digvijayrawat.me",
+      "PUBLIC_API_URL_TEST": "https://sandbox-api.billwave.digvijayrawat.me",
+      "PUBLIC_API_URL_LIVE": "https://sandbox-api.billwave.digvijayrawat.me"
+    }
+  },
 
   "observability": {
     "enabled": true,

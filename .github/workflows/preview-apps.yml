@@ -1,0 +1,115 @@
+name: Preview apps
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - "apps/dashboard/**"
+      - "apps/marketing/**"
+      - "apps/docs/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".github/workflows/preview-apps.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: previews-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build and publish previews
+        id: previews
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PREVIEW_NAME: pr-${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN repository secret is required}"
+          : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID repository secret is required}"
+
+          # The dashboard bundles these URLs into client code. Keep both modes on the sandbox API.
+          PUBLIC_API_URL_TEST=https://sandbox-api.billwave.digvijayrawat.me \
+          PUBLIC_API_URL_LIVE=https://sandbox-api.billwave.digvijayrawat.me \
+          VITE_API_URL_TEST=https://sandbox-api.billwave.digvijayrawat.me \
+          VITE_API_URL_LIVE=https://sandbox-api.billwave.digvijayrawat.me \
+            pnpm --filter billwave-dashboard build
+          pnpm --filter billwave-marketing build
+          NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter billwave-docs build
+
+          for app in dashboard marketing docs; do
+            output="$(cd "apps/$app" && pnpm exec wrangler preview --name "$PREVIEW_NAME" --json)"
+            url="$(printf '%s' "$output" | jq -er '.preview.urls[0]')"
+            echo "${app}_url=$url" >> "$GITHUB_OUTPUT"
+            echo "$app: $url" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Add preview links to pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DASHBOARD_URL: ${{ steps.previews.outputs.dashboard_url }}
+          MARKETING_URL: ${{ steps.previews.outputs.marketing_url }}
+          DOCS_URL: ${{ steps.previews.outputs.docs_url }}
+        run: |
+          set -euo pipefail
+          cat > preview-comment.md <<EOF
+          <!-- billwave-cloudflare-previews -->
+          Cloudflare previews for this PR:
+
+          - [Dashboard]($DASHBOARD_URL)
+          - [Marketing]($MARKETING_URL)
+          - [Docs]($DOCS_URL)
+
+          The dashboard preview uses the sandbox API in both modes.
+          EOF
+          comment_id="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq '.[] | select(.body | contains("<!-- billwave-cloudflare-previews -->")) | .id' | head -n 1)"
+          if [ -n "$comment_id" ]; then
+            gh api "repos/$GH_REPO/issues/comments/$comment_id" -X PATCH -F body=@preview-comment.md > /dev/null
+          else
+            gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" -X POST -F body=@preview-comment.md > /dev/null
+          fi
+
+  cleanup:
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Delete closed PR previews
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PREVIEW_NAME: pr-${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          for app in dashboard marketing docs; do
+            (cd "apps/$app" && pnpm exec wrangler preview delete --name "$PREVIEW_NAME" --skip-confirmation)
+          done
