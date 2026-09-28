@@ -1,8 +1,9 @@
 <div align="center">
-
-<img src="apps/dashboard/static/logo.svg" alt="Billwave logo" width="40" />
-
-# Billwave
+  <h1>
+    <img src="apps/dashboard/static/logo.svg" alt="" width="40" style="vertical-align: middle;" />
+    Billwave
+  </h1>
+</div>
 
 ---
 
