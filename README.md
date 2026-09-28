@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🌊 Billwave
+<img src="apps/dashboard/static/logo.svg" alt="Billwave logo" width="40" />
+
+# Billwave
 
 ---
 
