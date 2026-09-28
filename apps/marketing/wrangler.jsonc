@@ -16,6 +16,7 @@
       "service": "billwave-docs",
     },
   ],
+  "previews": {},
   "routes": [
     {
       "pattern": "billwave.digvijayrawat.me",
