@@ -58,8 +58,11 @@ jobs:
           NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter billwave-docs build
 
           for app in dashboard marketing docs; do
-            output="$(cd "apps/$app" && pnpm exec wrangler preview --name "$PREVIEW_NAME" --json)"
-            url="$(printf '%s' "$output" | jq -er '.preview.urls[0]')"
+            output="$(cd "apps/$app" && ./node_modules/.bin/wrangler preview --name "$PREVIEW_NAME" --json)"
+            if ! url="$(printf '%s' "$output" | jq -er '.preview.urls[0]')"; then
+              printf 'Could not read %s preview URL from Wrangler output:\n%s\n' "$app" "$output" >&2
+              exit 1
+            fi
             echo "${app}_url=$url" >> "$GITHUB_OUTPUT"
             echo "$app: $url" >> "$GITHUB_STEP_SUMMARY"
           done
@@ -111,5 +114,5 @@ jobs:
         run: |
           set -euo pipefail
           for app in dashboard marketing docs; do
-            (cd "apps/$app" && pnpm exec wrangler preview delete --name "$PREVIEW_NAME" --skip-confirmation)
+            (cd "apps/$app" && ./node_modules/.bin/wrangler preview delete --name "$PREVIEW_NAME" --skip-confirmation)
           done
